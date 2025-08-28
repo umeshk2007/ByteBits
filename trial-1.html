@@ -1,0 +1,2143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Industrial VR/AR Prototyping Platform</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            overflow-y: auto;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .viewport {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #2c3e50 0%, #1a252f 100%);
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .section:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .section h3 {
+            color: #2c3e50;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .icon {
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 8px 12px;
+            margin: 4px 0;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        button.active {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.3);
+        }
+
+        button.danger {
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+        }
+
+        button.warning {
+            background: linear-gradient(45deg, #f39c12, #e67e22);
+        }
+
+        .slider-container {
+            margin: 8px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            margin-bottom: 4px;
+            color: #2c3e50;
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(to right, #667eea, #764ba2);
+            outline: none;
+            border-radius: 3px;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="text"], input[type="number"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            margin: 4px 0;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .input-group input {
+            flex: 1;
+        }
+
+        .cloud-panel, .sensor-panel, .safety-panel, .evaluation-panel {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .cloud-panel {
+            top: 20px;
+            right: 20px;
+        }
+
+        .sensor-panel {
+            top: 20px;
+            right: 340px;
+        }
+
+        .safety-panel {
+            bottom: 20px;
+            right: 20px;
+        }
+
+        .evaluation-panel {
+            bottom: 20px;
+            right: 340px;
+        }
+
+        .panel.open {
+            transform: translateX(0);
+        }
+
+        .panel-toggle {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            font-size: 16px;
+        }
+
+        .panel-toggle:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .stats-overlay {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.85rem;
+            backdrop-filter: blur(5px);
+            min-width: 200px;
+        }
+
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin: 10px 0;
+        }
+
+        .sensor-item {
+            background: rgba(102, 126, 234, 0.1);
+            padding: 8px;
+            border-radius: 6px;
+            text-align: center;
+            border-left: 3px solid #667eea;
+        }
+
+        .sensor-value {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #2c3e50;
+        }
+
+        .sensor-label {
+            font-size: 0.75rem;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .risk-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            margin: 4px 0;
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+
+        .risk-low {
+            background: rgba(39, 174, 96, 0.2);
+            border-left: 4px solid #27ae60;
+        }
+
+        .risk-medium {
+            background: rgba(243, 156, 18, 0.2);
+            border-left: 4px solid #f39c12;
+        }
+
+        .risk-high {
+            background: rgba(231, 76, 60, 0.2);
+            border-left: 4px solid #e74c3c;
+        }
+
+        .evaluation-chart {
+            width: 100%;
+            height: 120px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 6px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-bar {
+            position: absolute;
+            bottom: 0;
+            background: linear-gradient(to top, #667eea, #764ba2);
+            border-radius: 3px 3px 0 0;
+            transition: height 0.3s ease;
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(39, 174, 96, 0.9);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 2000;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: rgba(231, 76, 60, 0.9);
+        }
+
+        .notification.warning {
+            background: rgba(243, 156, 18, 0.9);
+        }
+
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 8px;
+            margin: 3px 0;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+            font-size: 0.75rem;
+        }
+
+        .file-type {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+
+        .file-remove {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        .drag-drop-zone {
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: rgba(102, 126, 234, 0.05);
+            margin: 10px 0;
+            transition: all 0.3s ease;
+        }
+
+        .drag-drop-zone.drag-over {
+            border-color: #27ae60;
+            background: rgba(39, 174, 96, 0.1);
+        }
+
+        .upload-progress {
+            width: 100%;
+            height: 4px;
+            background: rgba(102, 126, 234, 0.2);
+            border-radius: 2px;
+            overflow: hidden;
+            margin: 5px 0;
+        }
+
+        .upload-progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>🏭 Enhanced VR Lab</h1>
+            
+            <div class="section">
+                <h3><span class="icon">🎯</span>Design Tools</h3>
+                <button onclick="loadPrototype('engine')" id="engineBtn" class="active">Load Engine Model</button>
+                <button onclick="loadPrototype('assembly')" id="assemblyBtn">Assembly Line</button>
+                <button onclick="loadPrototype('chemical')" id="chemicalBtn">Chemical Reactor</button>
+                <button onclick="loadPrototype('custom')" id="customBtn">Custom Model</button>
+                <button onclick="clearScene()" id="clearBtn">Clear Scene</button>
+            </div>
+
+            <div class="section">
+                <h3><span class="icon">✏️</span>User Input</h3>
+                <input type="text" id="modelName" placeholder="Model Name" value="Industrial Prototype v1.0">
+                <div class="input-group">
+                    <input type="number" id="scaleInput" placeholder="Scale" value="1" step="0.1" min="0.1" max="5">
+                    <select id="materialSelect">
+                        <option value="steel">Steel</option>
+                        <option value="aluminum">Aluminum</option>
+                        <option value="plastic">Plastic</option>
+                        <option value="composite">Composite</option>
+                    </select>
+                </div>
+                <textarea id="designNotes" placeholder="Design Notes & Requirements" rows="3"></textarea>
+                
+                <div style="margin: 10px 0;">
+                    <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 600; font-size: 0.9rem;">Upload Files:</label>
+                    <input type="file" id="fileUpload" multiple accept=".obj,.stl,.glb,.gltf,.fbx,.dae,.ply,.json,.csv,.txt,.pdf,.png,.jpg,.jpeg" 
+                           style="width: 100%; padding: 8px; margin: 4px 0; border: 2px dashed #667eea; border-radius: 6px; font-size: 0.85rem; background: rgba(102, 126, 234, 0.1);">
+                    <div id="fileList" style="margin-top: 8px; font-size: 0.8rem; color: #666;"></div>
+                </div>
+                
+                <button onclick="applyUserInputs()">Apply Changes</button>
+                <button onclick="processUploadedFiles()" id="processFilesBtn" style="display: none;">Process Files</button>
+            </div>
+
+            <div class="section">
+                <h3><span class="icon">🔧</span>Manipulation</h3>
+                <button onclick="toggleMode('rotate')" id="rotateBtn">Rotate Mode</button>
+                <button onclick="toggleMode('scale')" id="scaleBtn">Scale Mode</button>
+                <button onclick="toggleMode('translate')" id="translateBtn">Move Mode</button>
+                <button onclick="toggleWireframe()" id="wireframeBtn">Wireframe View</button>
+            </div>
+
+            <div class="section">
+                <h3><span class="icon">⚙️</span>Simulation Control</h3>
+                <div class="slider-container">
+                    <label>Speed: <span id="speedValue">5</span></label>
+                    <input type="range" id="speedSlider" min="0" max="10" value="5" onchange="updateSpeed(this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>Temperature: <span id="tempValue">300°C</span></label>
+                    <input type="range" id="tempSlider" min="0" max="1000" value="300" onchange="updateTemperature(this.value)">
+                </div>
+                <div class="slider-container">
+                    <label>Pressure: <span id="pressureValue">5 bar</span></label>
+                    <input type="range" id="pressureSlider" min="0" max="20" value="5" onchange="updatePressure(this.value)">
+                </div>
+                <button onclick="startSimulation()" id="simBtn">Start Simulation</button>
+                <button onclick="runOptimization()" id="optimizeBtn">Auto Optimize</button>
+            </div>
+
+            <div class="section">
+                <h3><span class="icon">🥽</span>VR/AR Hardware</h3>
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 600; font-size: 0.85rem;">VR Headset Status:</label>
+                    <div id="vrStatus" style="padding: 6px; background: rgba(231, 76, 60, 0.2); border-radius: 4px; font-size: 0.8rem; color: #c0392b;">
+                        🔴 No VR device detected
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 10px;">
+                    <label style="display: block; margin-bottom: 5px; color: #2c3e50; font-weight: 600; font-size: 0.85rem;">Supported Devices:</label>
+                    <div style="font-size: 0.75rem; color: #666;">
+                        • Meta Quest 2/3/Pro<br>
+                        • HTC Vive/Vive Pro<br>
+                        • Valve Index<br>
+                        • Pico 4 Enterprise<br>
+                        • HoloLens 2 (AR)
+                    </div>
+                </div>
+                
+                <button onclick="detectVRDevices()" id="detectBtn">🔍 Detect VR Devices</button>
+                <button onclick="enterVRMode()" id="vrBtn" disabled>🥽 Enter VR Mode</button>
+                <button onclick="enterARMode()" id="arBtn">📱 AR Overlay</button>
+                <button onclick="enableStereoView()" id="stereoBtn">👀 Stereo View</button>
+                <button onclick="calibrateVRSpace()" id="calibrateBtn" disabled>📐 Calibrate Space</button>
+                <button onclick="vrControllerSetup()" id="controllerBtn" disabled>🎮 Controller Setup</button>
+                
+                <div id="vrDeviceInfo" style="display: none; margin-top: 10px; padding: 8px; background: rgba(39, 174, 96, 0.1); border-radius: 6px; font-size: 0.75rem;">
+                    <div><strong>Device:</strong> <span id="deviceName">-</span></div>
+                    <div><strong>Resolution:</strong> <span id="deviceResolution">-</span></div>
+                    <div><strong>Refresh Rate:</strong> <span id="deviceRefreshRate">-</span></div>
+                    <div><strong>Tracking:</strong> <span id="deviceTracking">-</span></div>
+                    <div><strong>Controllers:</strong> <span id="deviceControllers">-</span></div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3><span class="icon">📊</span>Export & Analytics</h3>
+                <button onclick="generateReport()" id="reportBtn">Performance Report</button>
+                <button onclick="exportModel()" id="exportBtn">Export Model</button>
+                <button onclick="saveVersion()" id="versionBtn">Save Version</button>
+                <button onclick="shareToCloud()" id="shareBtn">Share to Cloud</button>
+            </div>
+        </div>
+
+        <div class="viewport" id="viewport">
+            <!-- Toggle buttons for panels -->
+            <button class="panel-toggle" style="top: 20px; right: 20px;" onclick="togglePanel('cloud')" title="Cloud Sharing">☁️</button>
+            <button class="panel-toggle" style="top: 80px; right: 20px;" onclick="togglePanel('sensor')" title="Sensor Data">📡</button>
+            <button class="panel-toggle" style="bottom: 80px; right: 20px;" onclick="togglePanel('safety')" title="Safety Analysis">⚠️</button>
+            <button class="panel-toggle" style="bottom: 20px; right: 20px;" onclick="togglePanel('evaluation')" title="Evaluation">📈</button>
+
+            <!-- Cloud Sharing Panel -->
+            <div class="cloud-panel panel" id="cloudPanel">
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">☁️ Cloud Sharing</h3>
+                <button onclick="uploadToCloud()">Upload Current Model</button>
+                <button onclick="downloadFromCloud()">Browse Cloud Models</button>
+                <button onclick="syncWithTeam()">Sync with Team</button>
+                <div style="margin: 15px 0;">
+                    <label>Share Link:</label>
+                    <input type="text" id="shareLink" value="https://vrlab.cloud/model/abc123" readonly>
+                    <button onclick="copyShareLink()" style="margin-top: 5px;">Copy Link</button>
+                </div>
+                <div>
+                    <h4 style="margin: 10px 0 5px 0; color: #2c3e50;">Cloud Status</h4>
+                    <div style="font-size: 0.8rem;">
+                        <div>Status: <span style="color: #27ae60;">Connected</span></div>
+                        <div>Last Sync: 2 minutes ago</div>
+                        <div>Storage Used: 145MB / 1GB</div>
+                    </div>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 14.5%;"></div>
+                </div>
+            </div>
+
+            <!-- Sensor Data Panel -->
+            <div class="sensor-panel panel" id="sensorPanel">
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">📡 Live Sensor Data</h3>
+                <div class="sensor-grid">
+                    <div class="sensor-item">
+                        <div class="sensor-value" id="vibrationSensor">2.3 Hz</div>
+                        <div class="sensor-label">Vibration</div>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="sensor-value" id="noiseSensor">68 dB</div>
+                        <div class="sensor-label">Noise Level</div>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="sensor-value" id="stressSensor">245 MPa</div>
+                        <div class="sensor-label">Stress</div>
+                    </div>
+                    <div class="sensor-item">
+                        <div class="sensor-value" id="efficiencySensor">87%</div>
+                        <div class="sensor-label">Efficiency</div>
+                    </div>
+                </div>
+                <h4 style="margin: 15px 0 10px 0; color: #2c3e50;">Metrics History</h4>
+                <div class="evaluation-chart" id="sensorChart">
+                    <div class="chart-bar" style="left: 10%; width: 15%; height: 60%;"></div>
+                    <div class="chart-bar" style="left: 30%; width: 15%; height: 75%;"></div>
+                    <div class="chart-bar" style="left: 50%; width: 15%; height: 85%;"></div>
+                    <div class="chart-bar" style="left: 70%; width: 15%; height: 70%;"></div>
+                </div>
+                <button onclick="calibrateSensors()">Calibrate Sensors</button>
+                <button onclick="exportSensorData()">Export Data</button>
+            </div>
+
+            <!-- Safety Analysis Panel -->
+            <div class="safety-panel panel" id="safetyPanel">
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">⚠️ Safety Analysis</h3>
+                <div class="risk-indicator risk-low">
+                    <span>Structural Integrity</span>
+                    <span>✅ Low Risk</span>
+                </div>
+                <div class="risk-indicator risk-medium">
+                    <span>Temperature Limits</span>
+                    <span>⚠️ Medium Risk</span>
+                </div>
+                <div class="risk-indicator risk-low">
+                    <span>Pressure Safety</span>
+                    <span>✅ Low Risk</span>
+                </div>
+                <div class="risk-indicator risk-high">
+                    <span>Vibration Limits</span>
+                    <span>❌ High Risk</span>
+                </div>
+                <h4 style="margin: 15px 0 10px 0; color: #2c3e50;">Safety Score: 72/100</h4>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: 72%;"></div>
+                </div>
+                <button onclick="runSafetyCheck()" class="warning">Full Safety Check</button>
+                <button onclick="generateSafetyReport()">Safety Report</button>
+                <button onclick="showSafetyRecommendations()">Recommendations</button>
+            </div>
+
+            <!-- Evaluation Panel -->
+            <div class="evaluation-panel panel" id="evaluationPanel">
+                <h3 style="margin-bottom: 15px; color: #2c3e50;">📈 Performance Evaluation</h3>
+                <div style="font-size: 0.85rem; margin-bottom: 15px;">
+                    <div>Overall Score: <strong>8.4/10</strong></div>
+                    <div>Design Efficiency: 85%</div>
+                    <div>Cost Effectiveness: 92%</div>
+                    <div>Manufacturing Feasibility: 78%</div>
+                </div>
+                <div class="evaluation-chart">
+                    <div class="chart-bar" style="left: 5%; width: 18%; height: 85%;"></div>
+                    <div class="chart-bar" style="left: 26%; width: 18%; height: 92%;"></div>
+                    <div class="chart-bar" style="left: 47%; width: 18%; height: 78%;"></div>
+                    <div class="chart-bar" style="left: 68%; width: 18%; height: 88%;"></div>
+                </div>
+                <button onclick="runEvaluation()">Run Full Evaluation</button>
+                <button onclick="compareDesigns()">Compare Designs</button>
+                <button onclick="optimizationSuggestions()">Get Suggestions</button>
+            </div>
+
+            <div class="stats-overlay" id="statsOverlay">
+                <div>FPS: <span id="fps">60</span></div>
+                <div>Objects: <span id="objectCount">5</span></div>
+                <div>Vertices: <span id="vertexCount">232</span></div>
+                <div>Mode: <span id="currentMode">View</span></div>
+                <div>Temp: <span id="currentTemp">300°C</span></div>
+                <div>Safety: <span id="safetyStatus">72/100</span></div>
+                <div>Cloud: <span id="cloudStatus">Connected</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification System -->
+    <div class="notification" id="notification"></div>
+
+    <!-- Modal for detailed views -->
+    <div class="modal" id="modal">
+        <div class="modal-content" id="modalContent"></div>
+    </div>
+
+    <script>
+        // Global variables
+        let scene, camera, renderer, controls;
+        let currentModel = null;
+        let currentMode = 'view';
+        let isSimulating = false;
+        let animationId = null;
+        let vrMode = false;
+        let sensorData = {};
+        let safetyMetrics = {};
+        let evaluationData = {};
+        let uploadedFiles = [];
+        let processedFileData = {};
+        
+        // VR/AR specific variables
+        let xrSession = null;
+        let xrReferenceSpace = null;
+        let vrController1 = null;
+        let vrController2 = null;
+        let vrControllerGrip1 = null;
+        let vrControllerGrip2 = null;
+        let vrDetectedDevices = [];
+        let isVRSupported = false;
+
+        // Initialize Three.js scene
+        function init() {
+            const viewport = document.getElementById('viewport');
+            
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x1a252f, 10, 1000);
+            
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, viewport.clientWidth / viewport.clientHeight, 0.1, 1000);
+            camera.position.set(5, 5, 5);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+            renderer.setClearColor(0x1a252f, 1);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.xr.enabled = true; // Enable WebXR
+            viewport.appendChild(renderer.domElement);
+            
+            // Check for WebXR support
+            checkWebXRSupport();
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            const pointLight = new THREE.PointLight(0x667eea, 0.5, 100);
+            pointLight.position.set(0, 5, 0);
+            scene.add(pointLight);
+            
+            // Grid helper
+            const gridHelper = new THREE.GridHelper(20, 20, 0x444444, 0x333333);
+            scene.add(gridHelper);
+            
+            // Mouse controls
+            setupMouseControls();
+            
+            // Initialize sensor simulation
+            initializeSensorData();
+            
+            // Initialize file upload handling
+            initializeFileUpload();
+            
+            // Initialize VR controllers
+            initializeVRControllers();
+            
+            // Start render loop
+            animate();
+            
+            // Set render loop for VR
+            renderer.setAnimationLoop(animate);
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Update stats periodically
+            setInterval(updateAllData, 1000);
+            
+            // Load default model
+            loadPrototype('engine');
+        }
+
+        function setupMouseControls() {
+            let mouseDown = false;
+            let mouseX = 0;
+            let mouseY = 0;
+            
+            renderer.domElement.addEventListener('mousedown', (event) => {
+                mouseDown = true;
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            });
+            
+            renderer.domElement.addEventListener('mousemove', (event) => {
+                if (!mouseDown) return;
+                
+                const deltaX = event.clientX - mouseX;
+                const deltaY = event.clientY - mouseY;
+                
+                // Rotate camera around the scene
+                const spherical = new THREE.Spherical();
+                spherical.setFromVector3(camera.position);
+                spherical.theta -= deltaX * 0.01;
+                spherical.phi += deltaY * 0.01;
+                spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+                
+                camera.position.setFromSpherical(spherical);
+                camera.lookAt(0, 0, 0);
+                
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            });
+            
+            renderer.domElement.addEventListener('mouseup', () => {
+                mouseDown = false;
+            });
+            
+            renderer.domElement.addEventListener('wheel', (event) => {
+                const distance = camera.position.length();
+                const newDistance = distance + event.deltaY * 0.01;
+                camera.position.multiplyScalar(newDistance / distance);
+            });
+        }
+
+        function animate() {
+            // Rotate model if in simulation mode
+            if (isSimulating && currentModel) {
+                currentModel.rotation.y += 0.01;
+                currentModel.rotation.x += 0.005;
+            }
+            
+            // Update VR controllers if in VR mode
+            if (vrMode && (vrController1 || vrController2)) {
+                updateVRControllers();
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        function loadPrototype(type) {
+            // Clear previous model
+            if (currentModel) {
+                scene.remove(currentModel);
+            }
+            
+            // Reset buttons
+            document.querySelectorAll('.section button').forEach(btn => btn.classList.remove('active'));
+            
+            let geometry, material;
+            
+            switch(type) {
+                case 'engine':
+                    currentModel = createEngineModel();
+                    document.getElementById('engineBtn').classList.add('active');
+                    break;
+                case 'assembly':
+                    currentModel = createAssemblyModel();
+                    document.getElementById('assemblyBtn').classList.add('active');
+                    break;
+                case 'chemical':
+                    currentModel = createChemicalModel();
+                    document.getElementById('chemicalBtn').classList.add('active');
+                    break;
+                case 'custom':
+                    currentModel = createCustomModel();
+                    document.getElementById('customBtn').classList.add('active');
+                    break;
+            }
+            
+            if (currentModel) {
+                scene.add(currentModel);
+                currentModel.position.y = 1;
+                showNotification('Model loaded successfully', 'success');
+                updateAllData();
+            }
+        }
+
+        function createEngineModel() {
+            const engineGroup = new THREE.Group();
+            
+            // Engine block
+            const blockGeometry = new THREE.BoxGeometry(3, 2, 4);
+            const blockMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
+            const engineBlock = new THREE.Mesh(blockGeometry, blockMaterial);
+            engineBlock.castShadow = true;
+            engineGroup.add(engineBlock);
+            
+            // Cylinders
+            for (let i = 0; i < 4; i++) {
+                const cylGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.5);
+                const cylMaterial = new THREE.MeshPhongMaterial({ color: 0xaaaaaa });
+                const cylinder = new THREE.Mesh(cylGeometry, cylMaterial);
+                cylinder.position.set(-1.5 + i, 1.5, 0);
+                cylinder.castShadow = true;
+                engineGroup.add(cylinder);
+            }
+            
+            return engineGroup;
+        }
+
+        function createAssemblyModel() {
+            const assemblyGroup = new THREE.Group();
+            
+            // Conveyor belt
+            const beltGeometry = new THREE.BoxGeometry(8, 0.2, 2);
+            const beltMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const belt = new THREE.Mesh(beltGeometry, beltMaterial);
+            belt.castShadow = true;
+            assemblyGroup.add(belt);
+            
+            // Assembly stations
+            for (let i = 0; i < 3; i++) {
+                const stationGeometry = new THREE.BoxGeometry(1, 2, 1);
+                const stationMaterial = new THREE.MeshPhongMaterial({ color: 0x4a90e2 });
+                const station = new THREE.Mesh(stationGeometry, stationMaterial);
+                station.position.set(-3 + i * 3, 1, 2);
+                station.castShadow = true;
+                assemblyGroup.add(station);
+            }
+            
+            return assemblyGroup;
+        }
+
+        function createChemicalModel() {
+            const chemicalGroup = new THREE.Group();
+            
+            // Main reactor vessel
+            const reactorGeometry = new THREE.CylinderGeometry(1.5, 1.5, 4);
+            const reactorMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x7ed321, 
+                transparent: true, 
+                opacity: 0.7 
+            });
+            const reactor = new THREE.Mesh(reactorGeometry, reactorMaterial);
+            reactor.castShadow = true;
+            chemicalGroup.add(reactor);
+            
+            // Pipes
+            for (let i = 0; i < 4; i++) {
+                const pipeGeometry = new THREE.CylinderGeometry(0.1, 0.1, 3);
+                const pipeMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
+                const pipe = new THREE.Mesh(pipeGeometry, pipeMaterial);
+                const angle = (i / 4) * Math.PI * 2;
+                pipe.position.set(Math.cos(angle) * 2, 0, Math.sin(angle) * 2);
+                pipe.rotation.z = Math.PI / 2;
+                chemicalGroup.add(pipe);
+            }
+            
+            return chemicalGroup;
+        }
+
+        function createCustomModel() {
+            const customGroup = new THREE.Group();
+            
+            // Create a more complex custom model
+            const mainGeometry = new THREE.BoxGeometry(2, 3, 2);
+            const mainMaterial = new THREE.MeshPhongMaterial({ color: 0x9b59b6 });
+            const mainStructure = new THREE.Mesh(mainGeometry, mainMaterial);
+            mainStructure.castShadow = true;
+            customGroup.add(mainStructure);
+            
+            // Add rotating elements
+            for (let i = 0; i < 6; i++) {
+                const elemGeometry = new THREE.SphereGeometry(0.2, 8, 6);
+                const elemMaterial = new THREE.MeshPhongMaterial({ color: 0xe74c3c });
+                const element = new THREE.Mesh(elemGeometry, elemMaterial);
+                const angle = (i / 6) * Math.PI * 2;
+                element.position.set(Math.cos(angle) * 1.5, Math.sin(angle) * 0.5, Math.sin(angle) * 1.5);
+                customGroup.add(element);
+            }
+            
+            return customGroup;
+        }
+
+        function applyUserInputs() {
+            if (!currentModel) return;
+            
+            const scale = parseFloat(document.getElementById('scaleInput').value);
+            const material = document.getElementById('materialSelect').value;
+            const name = document.getElementById('modelName').value;
+            const notes = document.getElementById('designNotes').value;
+            
+            // Apply scale
+            currentModel.scale.set(scale, scale, scale);
+            
+            // Apply material properties (visual representation)
+            let color;
+            switch(material) {
+                case 'steel': color = 0x888888; break;
+                case 'aluminum': color = 0xcccccc; break;
+                case 'plastic': color = 0x3498db; break;
+                case 'composite': color = 0x2c3e50; break;
+            }
+            
+            currentModel.traverse((child) => {
+                if (child.isMesh) {
+                    child.material.color.setHex(color);
+                }
+            });
+            
+            showNotification(`Applied changes: ${name} (${material}, scale: ${scale})`, 'success');
+            
+            // Process any uploaded files if available
+            if (uploadedFiles.length > 0) {
+                processUploadedFiles();
+            }
+            
+            updateAllData();
+        }
+
+        // File Upload Functions
+        function initializeFileUpload() {
+            const fileUpload = document.getElementById('fileUpload');
+            const fileList = document.getElementById('fileList');
+            
+            // Handle file selection
+            fileUpload.addEventListener('change', handleFileSelection);
+            
+            // Create drag and drop zone
+            const dragDropZone = document.createElement('div');
+            dragDropZone.className = 'drag-drop-zone';
+            dragDropZone.innerHTML = `
+                <div>📁 Drag and drop files here or click to browse</div>
+                <div style="font-size: 0.7rem; color: #666; margin-top: 5px;">
+                    Supported: 3D Models (.obj, .stl, .glb), Data (.csv, .json), Images (.png, .jpg), Documents (.pdf, .txt)
+                </div>
+            `;
+            
+            // Insert drag-drop zone before file input
+            fileUpload.parentNode.insertBefore(dragDropZone, fileUpload);
+            
+            // Drag and drop events
+            dragDropZone.addEventListener('dragover', handleDragOver);
+            dragDropZone.addEventListener('dragleave', handleDragLeave);
+            dragDropZone.addEventListener('drop', handleFileDrop);
+            dragDropZone.addEventListener('click', () => fileUpload.click());
+        }
+
+        function handleFileSelection(event) {
+            const files = Array.from(event.target.files);
+            processFiles(files);
+        }
+
+        function handleDragOver(event) {
+            event.preventDefault();
+            event.currentTarget.classList.add('drag-over');
+        }
+
+        function handleDragLeave(event) {
+            event.currentTarget.classList.remove('drag-over');
+        }
+
+        function handleFileDrop(event) {
+            event.preventDefault();
+            event.currentTarget.classList.remove('drag-over');
+            const files = Array.from(event.dataTransfer.files);
+            processFiles(files);
+        }
+
+        function processFiles(files) {
+            uploadedFiles = [...uploadedFiles, ...files];
+            updateFileList();
+            document.getElementById('processFilesBtn').style.display = 'block';
+            showNotification(`${files.length} file(s) selected for processing`, 'success');
+        }
+
+        function updateFileList() {
+            const fileList = document.getElementById('fileList');
+            fileList.innerHTML = '';
+            
+            if (uploadedFiles.length === 0) {
+                fileList.innerHTML = '<div style="color: #999;">No files selected</div>';
+                return;
+            }
+            
+            uploadedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                const fileType = getFileTypeIcon(file.name);
+                const fileSize = formatFileSize(file.size);
+                
+                fileItem.innerHTML = `
+                    <div>
+                        <span class="file-type">${fileType}</span>
+                        <span>${file.name}</span>
+                        <span style="color: #666; font-size: 0.7rem; margin-left: 8px;">(${fileSize})</span>
+                    </div>
+                    <button class="file-remove" onclick="removeFile(${index})">×</button>
+                `;
+                
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        function getFileTypeIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const typeMap = {
+                'obj': '3D', 'stl': '3D', 'glb': '3D', 'gltf': '3D', 'fbx': '3D', 'dae': '3D', 'ply': '3D',
+                'csv': 'CSV', 'json': 'JSON', 'txt': 'TXT',
+                'png': 'IMG', 'jpg': 'IMG', 'jpeg': 'IMG',
+                'pdf': 'PDF'
+            };
+            return typeMap[ext] || 'FILE';
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            updateFileList();
+            if (uploadedFiles.length === 0) {
+                document.getElementById('processFilesBtn').style.display = 'none';
+            }
+        }
+
+        async function processUploadedFiles() {
+            if (uploadedFiles.length === 0) return;
+            
+            showNotification('Processing uploaded files...', 'success');
+            
+            for (let i = 0; i < uploadedFiles.length; i++) {
+                const file = uploadedFiles[i];
+                await processIndividualFile(file, i);
+            }
+            
+            showNotification('All files processed successfully!', 'success');
+            document.getElementById('processFilesBtn').style.display = 'none';
+            
+            // Show processing results
+            showFileProcessingResults();
+        }
+
+        async function processIndividualFile(file, index) {
+            const fileType = file.name.split('.').pop().toLowerCase();
+            
+            try {
+                switch (fileType) {
+                    case 'obj':
+                    case 'stl':
+                    case 'glb':
+                    case 'gltf':
+                        await process3DFile(file);
+                        break;
+                    case 'csv':
+                        await processCSVFile(file);
+                        break;
+                    case 'json':
+                        await processJSONFile(file);
+                        break;
+                    case 'txt':
+                        await processTextFile(file);
+                        break;
+                    case 'png':
+                    case 'jpg':
+                    case 'jpeg':
+                        await processImageFile(file);
+                        break;
+                    case 'pdf':
+                        await processPDFFile(file);
+                        break;
+                    default:
+                        processedFileData[file.name] = {
+                            type: 'unknown',
+                            message: 'File type not supported for processing'
+                        };
+                }
+            } catch (error) {
+                processedFileData[file.name] = {
+                    type: 'error',
+                    message: `Error processing file: ${error.message}`
+                };
+            }
+        }
+
+        async function process3DFile(file) {
+            // Simulate 3D model processing
+            processedFileData[file.name] = {
+                type: '3d_model',
+                vertices: Math.floor(Math.random() * 10000) + 1000,
+                faces: Math.floor(Math.random() * 5000) + 500,
+                message: '3D model ready for import',
+                preview: 'Model contains detailed geometry suitable for VR visualization'
+            };
+            
+            // In a real implementation, you would load and parse the 3D file
+            // and potentially add it to the scene
+        }
+
+        async function processCSVFile(file) {
+            const text = await file.text();
+            const lines = text.split('\n');
+            const headers = lines[0]?.split(',') || [];
+            
+            processedFileData[file.name] = {
+                type: 'data',
+                rows: lines.length - 1,
+                columns: headers.length,
+                headers: headers,
+                message: 'CSV data loaded - can be used for sensor simulation or analysis',
+                preview: `Contains ${lines.length - 1} rows of data with columns: ${headers.slice(0, 3).join(', ')}${headers.length > 3 ? '...' : ''}`
+            };
+            
+            // You could integrate this data into sensor simulation
+            if (headers.some(h => h.toLowerCase().includes('temperature'))) {
+                showNotification('Temperature data detected - integrating with sensors', 'success');
+            }
+        }
+
+        async function processJSONFile(file) {
+            const text = await file.text();
+            const data = JSON.parse(text);
+            
+            processedFileData[file.name] = {
+                type: 'configuration',
+                keys: Object.keys(data).length,
+                message: 'JSON configuration loaded',
+                preview: `Configuration contains: ${Object.keys(data).slice(0, 3).join(', ')}${Object.keys(data).length > 3 ? '...' : ''}`
+            };
+            
+            // Could be used for simulation parameters
+            if (data.simulation) {
+                showNotification('Simulation parameters detected in JSON', 'success');
+            }
+        }
+
+        async function processTextFile(file) {
+            const text = await file.text();
+            const wordCount = text.split(/\s+/).length;
+            
+            processedFileData[file.name] = {
+                type: 'documentation',
+                wordCount: wordCount,
+                lineCount: text.split('\n').length,
+                message: 'Text document processed',
+                preview: `Document contains ${wordCount} words and ${text.split('\n').length} lines`
+            };
+        }
+
+        async function processImageFile(file) {
+            processedFileData[file.name] = {
+                type: 'image',
+                size: formatFileSize(file.size),
+                message: 'Image processed - can be used as texture or reference',
+                preview: 'Image ready for use as material texture or design reference'
+            };
+            
+            // Could be used as texture in 3D models
+        }
+
+        async function processPDFFile(file) {
+            processedFileData[file.name] = {
+                type: 'document',
+                size: formatFileSize(file.size),
+                message: 'PDF document detected',
+                preview: 'Document available for reference - could contain specifications or drawings'
+            };
+        }
+
+        function showFileProcessingResults() {
+            let resultsHTML = '<h3>File Processing Results</h3>';
+            
+            for (const [filename, data] of Object.entries(processedFileData)) {
+                resultsHTML += `
+                    <div style="margin: 10px 0; padding: 10px; background: rgba(102, 126, 234, 0.1); border-radius: 6px;">
+                        <div style="font-weight: bold;">${filename}</div>
+                        <div style="font-size: 0.85rem; color: #666; margin-top: 5px;">${data.message}</div>
+                        ${data.preview ? `<div style="font-size: 0.8rem; color: #888; margin-top: 3px;">${data.preview}</div>` : ''}
+                    </div>
+                `;
+            }
+            
+            resultsHTML += '<div style="margin-top: 15px; font-size: 0.85rem; color: #666;">Files are now available for integration into your VR prototype.</div>';
+            
+            showModal('Processing Complete', resultsHTML);
+        }
+
+        function toggleMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.section button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(mode + 'Btn').classList.add('active');
+            document.getElementById('currentMode').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+        }
+
+        function toggleWireframe() {
+            if (!currentModel) return;
+            
+            currentModel.traverse((child) => {
+                if (child.isMesh) {
+                    child.material.wireframe = !child.material.wireframe;
+                }
+            });
+            
+            const btn = document.getElementById('wireframeBtn');
+            btn.classList.toggle('active');
+        }
+
+        function clearScene() {
+            if (currentModel) {
+                scene.remove(currentModel);
+                currentModel = null;
+            }
+            document.querySelectorAll('.section button').forEach(btn => btn.classList.remove('active'));
+            showNotification('Scene cleared', 'success');
+        }
+
+        function updateSpeed(value) {
+            document.getElementById('speedValue').textContent = value;
+            sensorData.speed = parseFloat(value);
+            updateSensorDisplay();
+        }
+
+        function updateTemperature(value) {
+            document.getElementById('tempValue').textContent = value + '°C';
+            document.getElementById('currentTemp').textContent = value + '°C';
+            sensorData.temperature = parseFloat(value);
+            
+            // Visual temperature effect
+            if (currentModel) {
+                const temp = parseInt(value);
+                let color, intensity;
+                if (temp < 200) { color = 0x4a90e2; intensity = 0; }
+                else if (temp < 500) { color = 0x7ed321; intensity = temp / 2000; }
+                else if (temp < 800) { color = 0xf5a623; intensity = temp / 1500; }
+                else { color = 0xd0021b; intensity = temp / 1000; }
+                
+                currentModel.traverse((child) => {
+                    if (child.isMesh && child.material) {
+                        child.material.emissive.setHex(color);
+                        child.material.emissiveIntensity = intensity;
+                    }
+                });
+            }
+            
+            updateSafetyMetrics();
+        }
+
+        function updatePressure(value) {
+            document.getElementById('pressureValue').textContent = value + ' bar';
+            sensorData.pressure = parseFloat(value);
+            updateSensorDisplay();
+            updateSafetyMetrics();
+        }
+
+        function startSimulation() {
+            isSimulating = !isSimulating;
+            const btn = document.getElementById('simBtn');
+            if (isSimulating) {
+                btn.textContent = 'Stop Simulation';
+                btn.classList.add('active');
+                showNotification('Simulation started', 'success');
+            } else {
+                btn.textContent = 'Start Simulation';
+                btn.classList.remove('active');
+                showNotification('Simulation stopped', 'success');
+            }
+        }
+
+        function runOptimization() {
+            showNotification('Running AI optimization...', 'success');
+            setTimeout(() => {
+                const improvements = [
+                    'Reduced vibration by 15%',
+                    'Improved efficiency by 8%',
+                    'Optimized temperature distribution',
+                    'Enhanced structural integrity'
+                ];
+                showModal('Optimization Complete', improvements.join('<br>'));
+                updateAllData();
+            }, 2000);
+        }
+
+        // Panel Management
+        function togglePanel(panelName) {
+            const panel = document.getElementById(panelName + 'Panel');
+            panel.classList.toggle('open');
+        }
+
+        // Cloud Functions
+        function shareToCloud() {
+            showNotification('Uploading to cloud...', 'success');
+            setTimeout(() => {
+                showNotification('Model shared successfully! Link copied to clipboard.', 'success');
+                updateCloudStatus();
+            }, 1500);
+        }
+
+        function uploadToCloud() {
+            showNotification('Uploading current model...', 'success');
+            setTimeout(() => {
+                showNotification('Upload complete!', 'success');
+                updateCloudStatus();
+            }, 1000);
+        }
+
+        function downloadFromCloud() {
+            const models = [
+                'Industrial Engine v2.3',
+                'Assembly Line Pro',
+                'Chemical Reactor Advanced',
+                'Custom Prototype A1',
+                'Safety Test Model'
+            ];
+            showModal('Cloud Models', models.map(model => `<button onclick="loadCloudModel('${model}')" style="margin: 5px;">${model}</button>`).join(''));
+        }
+
+        function loadCloudModel(modelName) {
+            closeModal();
+            showNotification(`Loading ${modelName}...`, 'success');
+            setTimeout(() => {
+                showNotification(`${modelName} loaded successfully!`, 'success');
+            }, 1000);
+        }
+
+        function syncWithTeam() {
+            showNotification('Syncing with team...', 'success');
+            setTimeout(() => {
+                showNotification('Sync complete! 3 updates received.', 'success');
+            }, 1500);
+        }
+
+        function copyShareLink() {
+            const shareLink = document.getElementById('shareLink').value;
+            navigator.clipboard.writeText(shareLink);
+            showNotification('Share link copied to clipboard!', 'success');
+        }
+
+        function updateCloudStatus() {
+            document.getElementById('cloudStatus').textContent = 'Connected';
+        }
+
+        // Sensor Data Management
+        function initializeSensorData() {
+            sensorData = {
+                vibration: 2.3,
+                noise: 68,
+                stress: 245,
+                efficiency: 87,
+                temperature: 300,
+                pressure: 5,
+                speed: 5
+            };
+            updateSensorDisplay();
+        }
+
+        function updateSensorDisplay() {
+            document.getElementById('vibrationSensor').textContent = sensorData.vibration.toFixed(1) + ' Hz';
+            document.getElementById('noiseSensor').textContent = sensorData.noise.toFixed(0) + ' dB';
+            document.getElementById('stressSensor').textContent = sensorData.stress.toFixed(0) + ' MPa';
+            document.getElementById('efficiencySensor').textContent = sensorData.efficiency.toFixed(0) + '%';
+        }
+
+        function calibrateSensors() {
+            showNotification('Calibrating sensors...', 'success');
+            setTimeout(() => {
+                // Simulate calibration by adjusting values slightly
+                sensorData.vibration += (Math.random() - 0.5) * 0.2;
+                sensorData.noise += (Math.random() - 0.5) * 5;
+                sensorData.stress += (Math.random() - 0.5) * 20;
+                sensorData.efficiency += (Math.random() - 0.5) * 3;
+                
+                updateSensorDisplay();
+                showNotification('Sensor calibration complete!', 'success');
+            }, 1500);
+        }
+
+        function exportSensorData() {
+            const csvData = Object.entries(sensorData)
+                .map(([key, value]) => `${key},${value}`)
+                .join('\n');
+            
+            const blob = new Blob([csvData], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sensor_data.csv';
+            a.click();
+            
+            showNotification('Sensor data exported!', 'success');
+        }
+
+        // Safety Analysis
+        function updateSafetyMetrics() {
+            const temp = sensorData.temperature || 300;
+            const pressure = sensorData.pressure || 5;
+            const vibration = sensorData.vibration || 2.3;
+            
+            let safetyScore = 100;
+            
+            // Temperature safety
+            if (temp > 800) safetyScore -= 30;
+            else if (temp > 600) safetyScore -= 15;
+            else if (temp > 400) safetyScore -= 5;
+            
+            // Pressure safety
+            if (pressure > 15) safetyScore -= 25;
+            else if (pressure > 10) safetyScore -= 10;
+            
+            // Vibration safety
+            if (vibration > 5) safetyScore -= 20;
+            else if (vibration > 3) safetyScore -= 10;
+            
+            safetyScore = Math.max(0, safetyScore);
+            document.getElementById('safetyStatus').textContent = safetyScore + '/100';
+            
+            safetyMetrics.overallScore = safetyScore;
+        }
+
+        function runSafetyCheck() {
+            showNotification('Running comprehensive safety analysis...', 'success');
+            setTimeout(() => {
+                const issues = [];
+                if (sensorData.temperature > 600) issues.push('High temperature detected');
+                if (sensorData.pressure > 10) issues.push('Pressure exceeds safe limits');
+                if (sensorData.vibration > 3) issues.push('Excessive vibration levels');
+                
+                const result = issues.length > 0 ? 
+                    'Safety Issues Found:<br>' + issues.join('<br>') :
+                    'All safety checks passed!';
+                
+                showModal('Safety Check Results', result);
+            }, 2000);
+        }
+
+        function generateSafetyReport() {
+            const report = `
+                <h3>Safety Analysis Report</h3>
+                <p><strong>Overall Safety Score:</strong> ${safetyMetrics.overallScore || 72}/100</p>
+                <p><strong>Temperature Status:</strong> ${sensorData.temperature > 600 ? 'Warning' : 'Normal'}</p>
+                <p><strong>Pressure Status:</strong> ${sensorData.pressure > 10 ? 'Caution' : 'Normal'}</p>
+                <p><strong>Structural Integrity:</strong> Good</p>
+                <p><strong>Recommendations:</strong></p>
+                <ul>
+                    <li>Monitor temperature levels closely</li>
+                    <li>Implement vibration dampening</li>
+                    <li>Regular pressure valve inspection</li>
+                </ul>
+            `;
+            showModal('Safety Report', report);
+        }
+
+        function showSafetyRecommendations() {
+            const recommendations = [
+                'Add thermal insulation to reduce heat transfer',
+                'Install pressure relief valves at critical points',
+                'Implement vibration monitoring system',
+                'Use corrosion-resistant materials for chemical exposure',
+                'Regular maintenance schedule every 30 days'
+            ];
+            showModal('Safety Recommendations', recommendations.map(r => `• ${r}`).join('<br>'));
+        }
+
+        // Evaluation Functions
+        function runEvaluation() {
+            showNotification('Running performance evaluation...', 'success');
+            setTimeout(() => {
+                evaluationData = {
+                    overallScore: 8.4,
+                    efficiency: 85,
+                    costEffectiveness: 92,
+                    feasibility: 78,
+                    sustainability: 88
+                };
+                
+                const report = `
+                    <h3>Performance Evaluation</h3>
+                    <p><strong>Overall Score:</strong> ${evaluationData.overallScore}/10</p>
+                    <p><strong>Design Efficiency:</strong> ${evaluationData.efficiency}%</p>
+                    <p><strong>Cost Effectiveness:</strong> ${evaluationData.costEffectiveness}%</p>
+                    <p><strong>Manufacturing Feasibility:</strong> ${evaluationData.feasibility}%</p>
+                    <p><strong>Sustainability Score:</strong> ${evaluationData.sustainability}%</p>
+                `;
+                
+                showModal('Evaluation Results', report);
+            }, 2000);
+        }
+
+        function compareDesigns() {
+            const comparison = `
+                <h3>Design Comparison</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr style="background: #f8f9fa;">
+                        <th style="padding: 8px; border: 1px solid #ddd;">Metric</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Current</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Previous</th>
+                        <th style="padding: 8px; border: 1px solid #ddd;">Change</th>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd;">Efficiency</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">85%</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">78%</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; color: green;">+7%</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd;">Cost</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">$12,500</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">$15,200</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; color: green;">-$2,700</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px; border: 1px solid #ddd;">Safety Score</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">72/100</td>
+                        <td style="padding: 8px; border: 1px solid #ddd;">68/100</td>
+                        <td style="padding: 8px; border: 1px solid #ddd; color: green;">+4</td>
+                    </tr>
+                </table>
+            `;
+            showModal('Design Comparison', comparison);
+        }
+
+        function optimizationSuggestions() {
+            const suggestions = [
+                'Reduce material thickness by 12% to save weight and cost',
+                'Optimize cooling system placement for better thermal management',
+                'Consider alternative fastening methods to reduce assembly time',
+                'Implement predictive maintenance sensors',
+                'Use lighter composite materials for non-structural components'
+            ];
+            showModal('Optimization Suggestions', suggestions.map(s => `• ${s}`).join('<br>'));
+        }
+
+        // VR/AR Hardware Functions
+        async function checkWebXRSupport() {
+            if (navigator.xr) {
+                try {
+                    isVRSupported = await navigator.xr.isSessionSupported('immersive-vr');
+                    if (isVRSupported) {
+                        updateVRStatus('🟡 WebXR supported - Click detect to find devices', 'warning');
+                        document.getElementById('detectBtn').disabled = false;
+                    } else {
+                        updateVRStatus('🔴 WebXR not supported by browser', 'error');
+                    }
+                } catch (error) {
+                    updateVRStatus('🔴 WebXR detection failed', 'error');
+                }
+            } else {
+                updateVRStatus('🔴 WebXR not available in this browser', 'error');
+            }
+        }
+
+        async function detectVRDevices() {
+            showNotification('Scanning for VR devices...', 'success');
+            
+            try {
+                if (navigator.xr) {
+                    // Check for VR support
+                    const vrSupported = await navigator.xr.isSessionSupported('immersive-vr');
+                    const arSupported = await navigator.xr.isSessionSupported('immersive-ar');
+                    
+                    if (vrSupported || arSupported) {
+                        // Simulate device detection (in real implementation, this would query actual hardware)
+                        simulateDeviceDetection();
+                    } else {
+                        updateVRStatus('🔴 No XR sessions supported', 'error');
+                        showNotification('No VR/AR sessions supported by this browser', 'error');
+                    }
+                } else {
+                    showNotification('WebXR not available', 'error');
+                }
+            } catch (error) {
+                showNotification('Error detecting VR devices: ' + error.message, 'error');
+            }
+        }
+
+        function simulateDeviceDetection() {
+            // Simulate finding VR devices (in real app, this would detect actual hardware)
+            const possibleDevices = [
+                {
+                    name: 'Meta Quest 3',
+                    type: 'standalone',
+                    resolution: '2064 x 2208 per eye',
+                    refreshRate: '72/90/120 Hz',
+                    tracking: '6DOF Inside-Out',
+                    controllers: '2x Touch Controllers',
+                    supported: true
+                },
+                {
+                    name: 'Meta Quest 2',
+                    type: 'standalone',
+                    resolution: '1832 x 1920 per eye',
+                    refreshRate: '72/90 Hz',
+                    tracking: '6DOF Inside-Out',
+                    controllers: '2x Touch Controllers',
+                    supported: true
+                },
+                {
+                    name: 'HTC Vive Pro 2',
+                    type: 'tethered',
+                    resolution: '2448 x 2448 per eye',
+                    refreshRate: '90/120 Hz',
+                    tracking: '6DOF Lighthouse',
+                    controllers: '2x Vive Controllers',
+                    supported: true
+                }
+            ];
+            
+            // Randomly select a device to simulate detection
+            const detectedDevice = possibleDevices[Math.floor(Math.random() * possibleDevices.length)];
+            vrDetectedDevices = [detectedDevice];
+            
+            updateVRStatus(`🟢 ${detectedDevice.name} detected`, 'success');
+            showDeviceInfo(detectedDevice);
+            enableVRButtons();
+            
+            showNotification(`${detectedDevice.name} detected and ready!`, 'success');
+        }
+
+        function updateVRStatus(message, type) {
+            const statusElement = document.getElementById('vrStatus');
+            statusElement.textContent = message;
+            
+            // Update colors based on type
+            statusElement.style.background = type === 'success' ? 'rgba(39, 174, 96, 0.2)' :
+                                           type === 'warning' ? 'rgba(243, 156, 18, 0.2)' :
+                                           'rgba(231, 76, 60, 0.2)';
+            statusElement.style.color = type === 'success' ? '#27ae60' :
+                                       type === 'warning' ? '#f39c12' :
+                                       '#c0392b';
+        }
+
+        function showDeviceInfo(device) {
+            document.getElementById('deviceName').textContent = device.name;
+            document.getElementById('deviceResolution').textContent = device.resolution;
+            document.getElementById('deviceRefreshRate').textContent = device.refreshRate;
+            document.getElementById('deviceTracking').textContent = device.tracking;
+            document.getElementById('deviceControllers').textContent = device.controllers;
+            document.getElementById('vrDeviceInfo').style.display = 'block';
+        }
+
+        function enableVRButtons() {
+            document.getElementById('vrBtn').disabled = false;
+            document.getElementById('calibrateBtn').disabled = false;
+            document.getElementById('controllerBtn').disabled = false;
+        }
+
+        function initializeVRControllers() {
+            // Controller 1
+            vrController1 = renderer.xr.getController(0);
+            vrController1.addEventListener('selectstart', onControllerSelectStart);
+            vrController1.addEventListener('selectend', onControllerSelectEnd);
+            scene.add(vrController1);
+
+            // Controller 2
+            vrController2 = renderer.xr.getController(1);
+            vrController2.addEventListener('selectstart', onControllerSelectStart);
+            vrController2.addEventListener('selectend', onControllerSelectEnd);
+            scene.add(vrController2);
+
+            // Controller grips (for hand tracking)
+            vrControllerGrip1 = renderer.xr.getControllerGrip(0);
+            scene.add(vrControllerGrip1);
+
+            vrControllerGrip2 = renderer.xr.getControllerGrip(1);
+            scene.add(vrControllerGrip2);
+
+            // Add visual representation for controllers
+            const controllerGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, -1)
+            ]);
+            const controllerMaterial = new THREE.LineBasicMaterial({ color: 0xff0000 });
+            
+            const controllerLine1 = new THREE.Line(controllerGeometry, controllerMaterial);
+            vrController1.add(controllerLine1);
+            
+            const controllerLine2 = new THREE.Line(controllerGeometry, controllerMaterial);
+            vrController2.add(controllerLine2);
+        }
+
+        function onControllerSelectStart(event) {
+            const controller = event.target;
+            
+            // Highlight selected objects
+            if (currentModel) {
+                // Visual feedback for interaction
+                currentModel.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material.emissive.setHex(0x444444);
+                    }
+                });
+            }
+            
+            showNotification('VR Controller interaction detected', 'success');
+        }
+
+        function onControllerSelectEnd(event) {
+            // Reset highlighting
+            if (currentModel) {
+                currentModel.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material.emissive.setHex(0x000000);
+                    }
+                });
+            }
+        }
+
+        function updateVRControllers() {
+            // Update controller positions and interactions
+            if (vrController1.userData.isSelecting && currentModel) {
+                // Handle object manipulation in VR
+                const controllerPosition = new THREE.Vector3();
+                vrController1.getWorldPosition(controllerPosition);
+                
+                // Simple interaction example
+                if (currentMode === 'rotate') {
+                    currentModel.rotation.y += 0.01;
+                } else if (currentMode === 'scale') {
+                    const scale = 1 + Math.sin(Date.now() * 0.001) * 0.1;
+                    currentModel.scale.setScalar(scale);
+                }
+            }
+        }
+
+        async function enterVRMode() {
+            if (!isVRSupported) {
+                showNotification('VR not supported on this device', 'error');
+                return;
+            }
+
+            try {
+                // Request VR session
+                xrSession = await navigator.xr.requestSession('immersive-vr', {
+                    optionalFeatures: ['local-floor', 'bounded-floor', 'hand-tracking']
+                });
+                
+                // Set up XR reference space
+                xrReferenceSpace = await xrSession.requestReferenceSpace('local-floor');
+                
+                // Configure renderer for XR
+                await renderer.xr.setSession(xrSession);
+                
+                vrMode = true;
+                
+                // XR session event handlers
+                xrSession.addEventListener('end', onXRSessionEnd);
+                
+                showNotification('🥽 VR Mode Active - Use your headset and controllers!', 'success');
+                
+                // Update UI
+                document.getElementById('vrBtn').textContent = '🚪 Exit VR Mode';
+                document.getElementById('vrBtn').onclick = exitVRMode;
+                
+                // Show VR instructions
+                showModal('VR Mode Active', `
+                    <h3>🥽 VR Controls Active</h3>
+                    <div style="text-align: left; margin: 15px 0;">
+                        <strong>Controller Actions:</strong><br>
+                        • Trigger: Select/Interact<br>
+                        • Grip: Grab objects<br>
+                        • Thumbstick: Navigate<br>
+                        • Menu Button: Open VR menu<br><br>
+                        
+                        <strong>Hand Tracking:</strong><br>
+                        • Point to select<br>
+                        • Pinch to grab<br>
+                        • Palm up for menu<br><br>
+                        
+                        <strong>Safety:</strong><br>
+                        • Stay within play area<br>
+                        • Be aware of surroundings<br>
+                        • Take breaks every 30 minutes
+                    </div>
+                `);
+                
+            } catch (error) {
+                showNotification('Failed to enter VR mode: ' + error.message, 'error');
+                console.error('VR Error:', error);
+            }
+        }
+
+        function exitVRMode() {
+            if (xrSession) {
+                xrSession.end();
+            }
+        }
+
+        function onXRSessionEnd() {
+            vrMode = false;
+            xrSession = null;
+            xrReferenceSpace = null;
+            
+            document.getElementById('vrBtn').textContent = '🥽 Enter VR Mode';
+            document.getElementById('vrBtn').onclick = enterVRMode;
+            
+            showNotification('VR session ended', 'success');
+        }
+
+        async function enterARMode() {
+            try {
+                if (navigator.xr && await navigator.xr.isSessionSupported('immersive-ar')) {
+                    const arSession = await navigator.xr.requestSession('immersive-ar', {
+                        requiredFeatures: ['local-floor'],
+                        optionalFeatures: ['dom-overlay'],
+                    });
+                    
+                    showNotification('📱 AR Mode activated - Point camera at surface', 'success');
+                    
+                    // In a real implementation, you would set up AR tracking here
+                } else {
+                    // Fallback to camera overlay simulation
+                    showNotification('📱 AR Overlay simulation active', 'success');
+                    simulateAROverlay();
+                }
+            } catch (error) {
+                showNotification('AR not available: ' + error.message, 'error');
+            }
+        }
+
+        function simulateAROverlay() {
+            // Create AR overlay effect
+            const overlay = document.createElement('div');
+            overlay.style.position = 'fixed';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.background = 'rgba(0, 255, 255, 0.1)';
+            overlay.style.border = '2px solid #00ffff';
+            overlay.style.boxSizing = 'border-box';
+            overlay.style.pointerEvents = 'none';
+            overlay.style.zIndex = '1000';
+            
+            document.body.appendChild(overlay);
+            
+            setTimeout(() => {
+                document.body.removeChild(overlay);
+                showNotification('AR overlay simulation ended', 'success');
+            }, 5000);
+        }
+
+        function enableStereoView() {
+            // Enable stereoscopic rendering for 3D displays
+            renderer.setPixelRatio(window.devicePixelRatio);
+            
+            // Simulate stereo effect
+            camera.position.x += 0.1;
+            setTimeout(() => {
+                camera.position.x -= 0.2;
+                setTimeout(() => {
+                    camera.position.x += 0.1;
+                    showNotification('Stereo view calibrated', 'success');
+                }, 100);
+            }, 100);
+        }
+
+        function calibrateVRSpace() {
+            if (!vrDetectedDevices.length) {
+                showNotification('No VR device detected', 'error');
+                return;
+            }
+            
+            showNotification('Starting VR space calibration...', 'success');
+            
+            // Simulate calibration process
+            let progress = 0;
+            const calibrationInterval = setInterval(() => {
+                progress += 10;
+                showNotification(`VR calibration progress: ${progress}%`, 'success');
+                
+                if (progress >= 100) {
+                    clearInterval(calibrationInterval);
+                    showNotification('VR space calibration complete!', 'success');
+                    
+                    showModal('Calibration Complete', `
+                        <h3>🎯 VR Space Calibrated</h3>
+                        <p>Your VR play area has been successfully configured:</p>
+                        <ul style="text-align: left; margin: 15px 0;">
+                            <li>Play Area: 3.0m x 2.5m</li>
+                            <li>Height: 2.4m clearance</li>
+                            <li>Guardian System: Active</li>
+                            <li>Floor Level: Detected</li>
+                            <li>Tracking Quality: Excellent</li>
+                        </ul>
+                        <p style="color: #e67e22;"><strong>Remember:</strong> Stay within the defined play area for optimal safety and tracking.</p>
+                    `);
+                }
+            }, 200);
+        }
+
+        function vrControllerSetup() {
+            showModal('VR Controller Setup', `
+                <h3>🎮 Controller Configuration</h3>
+                <div style="text-align: left;">
+                    <h4>Quest 3/2 Touch Controllers:</h4>
+                    <ul>
+                        <li><strong>Trigger:</strong> Primary selection</li>
+                        <li><strong>Grip:</strong> Grab and manipulate objects</li>
+                        <li><strong>Thumbstick:</strong> Navigate and move</li>
+                        <li><strong>A/X Button:</strong> Confirm actions</li>
+                        <li><strong>B/Y Button:</strong> Cancel/Menu</li>
+                        <li><strong>Menu Button:</strong> System menu</li>
+                    </ul>
+                    
+                    <h4>Hand Tracking (if available):</h4>
+                    <ul>
+                        <li><strong>Point:</strong> Select items</li>
+                        <li><strong>Pinch:</strong> Grab objects</li>
+                        <li><strong>Palm Up:</strong> Access menus</li>
+                        <li><strong>Fist:</strong> Navigate back</li>
+                    </ul>
+                    
+                    <h4>Industrial VR Controls:</h4>
+                    <ul>
+                        <li><strong>Rotate Model:</strong> Grip + move controller</li>
+                        <li><strong>Scale Object:</strong> Two-hand pinch gesture</li>
+                        <li><strong>Teleport:</strong> Point and trigger</li>
+                        <li><strong>UI Interaction:</strong> Point and air-tap</li>
+                    </ul>
+                </div>
+                <button onclick="testControllers()" style="margin-top: 15px;">Test Controllers</button>
+            `);
+        }
+
+        function testControllers() {
+            closeModal();
+            showNotification('Testing VR controllers...', 'success');
+            
+            // Simulate controller testing
+            setTimeout(() => {
+                showNotification('Left controller: ✅ Working', 'success');
+            }, 1000);
+            
+            setTimeout(() => {
+                showNotification('Right controller: ✅ Working', 'success');
+            }, 2000);
+            
+            setTimeout(() => {
+                showNotification('Controller test complete! All systems operational.', 'success');
+            }, 3000);
+        }
+
+        // Export and Analytics
+        function generateReport() {
+            const report = `
+                <h3>Comprehensive Performance Report</h3>
+                <p><strong>Model:</strong> ${document.getElementById('modelName').value}</p>
+                <p><strong>Analysis Date:</strong> ${new Date().toLocaleDateString()}</p>
+                <hr>
+                <h4>Performance Metrics</h4>
+                <p>Overall Efficiency: 87%</p>
+                <p>Safety Score: ${safetyMetrics.overallScore || 72}/100</p>
+                <p>Cost Savings: $15,000 (compared to baseline)</p>
+                <p>Material Usage: Optimized by 18%</p>
+                <hr>
+                <h4>Sensor Data Summary</h4>
+                <p>Temperature: ${sensorData.temperature}°C</p>
+                <p>Pressure: ${sensorData.pressure} bar</p>
+                <p>Vibration: ${sensorData.vibration} Hz</p>
+                <p>Efficiency: ${sensorData.efficiency}%</p>
+                <hr>
+                <h4>Recommendations</h4>
+                <ul>
+                    <li>Continue monitoring temperature levels</li>
+                    <li>Schedule maintenance check in 30 days</li>
+                    <li>Consider upgrading pressure sensors</li>
+                </ul>
+            `;
+            showModal('Performance Report', report);
+        }
+
+        function exportModel() {
+            showNotification('Exporting model...', 'success');
+            setTimeout(() => {
+                showNotification('Model exported successfully! (Format: .glb, Size: 2.8MB)', 'success');
+            }, 1000);
+        }
+
+        function saveVersion() {
+            const version = 'v1.' + Math.floor(Math.random() * 100);
+            showNotification(`Version ${version} saved to cloud with timestamp`, 'success');
+        }
+
+        // Utility Functions
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        function showModal(title, content) {
+            const modal = document.getElementById('modal');
+            const modalContent = document.getElementById('modalContent');
+            
+            modalContent.innerHTML = `
+                <h2>${title}</h2>
+                ${content}
+                <button onclick="closeModal()" style="margin-top: 15px; width: 100px;">Close</button>
+            `;
+            
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function updateAllData() {
+            // Simulate real-time data updates
+            sensorData.vibration += (Math.random() - 0.5) * 0.1;
+            sensorData.noise += (Math.random() - 0.5) * 2;
+            sensorData.stress += (Math.random() - 0.5) * 10;
+            sensorData.efficiency += (Math.random() - 0.5) * 1;
+            
+            // Clamp values to reasonable ranges
+            sensorData.vibration = Math.max(0.1, Math.min(10, sensorData.vibration));
+            sensorData.noise = Math.max(30, Math.min(120, sensorData.noise));
+            sensorData.stress = Math.max(100, Math.min(500, sensorData.stress));
+            sensorData.efficiency = Math.max(60, Math.min(100, sensorData.efficiency));
+            
+            updateSensorDisplay();
+            updateSafetyMetrics();
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('fps').textContent = '60';
+            document.getElementById('objectCount').textContent = scene.children.length;
+            
+            let vertexCount = 0;
+            scene.traverse((child) => {
+                if (child.isMesh && child.geometry) {
+                    vertexCount += child.geometry.attributes.position?.count || 0;
+                }
+            });
+            document.getElementById('vertexCount').textContent = vertexCount;
+        }
+
+        function onWindowResize() {
+            const viewport = document.getElementById('viewport');
+            camera.aspect = viewport.clientWidth / viewport.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('modal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+
+        // Initialize the application
+        init();
+    </script>
+</body>
+</html>
