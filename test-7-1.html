@@ -1,0 +1,3843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Destructive Testing & CAD Platform</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Include GLTFLoader for GLB support -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <!-- Mediapipe Hands Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <!-- End Mediapipe Hands Library -->
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 25%, #16213e 50%, #0f3460 75%, #e74c3c 100%);
+            background-size: 400% 400%;
+            animation: gradientShift 8s ease infinite;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+
+        .sidebar {
+            width: 450px;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            border-right: 2px solid rgba(231, 76, 60, 0.3);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 0 50px rgba(231, 76, 60, 0.3);
+            color: white;
+        }
+
+        .viewport {
+            flex: 1;
+            position: relative;
+            background: radial-gradient(circle at center, #2c3e50 0%, #000000 100%);
+            overflow: hidden;
+        }
+
+        h1 {
+            color: #e74c3c;
+            font-size: 1.7rem;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 700;
+            text-shadow: 0 0 20px rgba(231, 76, 60, 0.8);
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from { text-shadow: 0 0 20px rgba(231, 76, 60, 0.8); }
+            to { text-shadow: 0 0 30px rgba(231, 76, 60, 1), 0 0 40px rgba(231, 76, 60, 0.8); }
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid rgba(231, 76, 60, 0.2);
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(231, 76, 60, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .section:hover::before {
+            left: 100%;
+        }
+
+        .section:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(231, 76, 60, 0.5);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(231, 76, 60, 0.2);
+        }
+
+        .section h3 {
+            color: #e74c3c;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            box-shadow: 0 0 15px rgba(231, 76, 60, 0.5);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px 15px;
+            margin: 6px 0;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(45deg, #e74c3c, #c0392b);
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+            z-index: 1;
+        }
+
+        button::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            transition: width 0.3s ease, height 0.3s ease;
+            z-index: -1;
+        }
+
+        button:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.5);
+        }
+
+        button.active {
+            background: linear-gradient(45deg, #27ae60, #2ecc71);
+            box-shadow: 0 0 25px rgba(46, 204, 113, 0.5);
+        }
+
+        button.destructive {
+            background: linear-gradient(45deg, #8e44ad, #9b59b6);
+            box-shadow: 0 4px 15px rgba(142, 68, 173, 0.3);
+        }
+
+        button.cad {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+
+        /* New and enhanced styles for a more attractive interface */
+        .section.ar-vr-section {
+            border: 1px solid rgba(128, 0, 128, 0.2); /* Purple border */
+            box-shadow: 0 0 50px rgba(128, 0, 128, 0.3); /* Purple glow */
+        }
+        .section.ar-vr-section h3 {
+            color: #800080; /* Purple icon color */
+        }
+        .section.ar-vr-section .icon {
+            background: linear-gradient(45deg, #800080, #4B0082); /* Purple gradient */
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+        }
+
+        .section.report-section {
+            border: 1px solid rgba(0, 128, 0, 0.2); /* Green border */
+            box-shadow: 0 0 50px rgba(0, 128, 0, 0.3); /* Green glow */
+        }
+        .section.report-section h3 {
+            color: #008000; /* Green icon color */
+        }
+        .section.report-section .icon {
+            background: linear-gradient(45deg, #008000, #006400); /* Green gradient */
+            box-shadow: 0 0 15px rgba(0, 128, 0, 0.5);
+        }
+
+        .section.simulation-section {
+            border: 1px solid rgba(255, 165, 0, 0.2); /* Orange border */
+            box-shadow: 0 0 50px rgba(255, 165, 0, 0.3); /* Orange glow */
+        }
+        .section.simulation-section h3 {
+            color: #FFA500; /* Orange icon color */
+        }
+        .section.simulation-section .icon {
+            background: linear-gradient(45deg, #FFA500, #FF8C00); /* Orange gradient */
+            box-shadow: 0 0 15px rgba(255, 165, 0, 0.5);
+        }
+
+        /* New styles for Virtual Test Workflow section */
+        .section.virtual-test-section {
+            border: 1px solid rgba(100, 149, 237, 0.2); /* Cornflower Blue border */
+            box-shadow: 0 0 50px rgba(100, 149, 237, 0.3); /* Cornflower Blue glow */
+        }
+        .section.virtual-test-section h3 {
+            color: #6495ED; /* Cornflower Blue icon color */
+        }
+        .section.virtual-test-section .icon {
+            background: linear-gradient(45deg, #6495ED, #4682B4); /* Cornflower Blue to Steel Blue gradient */
+            box-shadow: 0 0 15px rgba(100, 149, 237, 0.5);
+        }
+        .virtual-test-buttons button {
+            background: linear-gradient(45deg, #6A5ACD, #483D8B); /* Slate Blue to Dark Slate Blue */
+            box-shadow: 0 4px 15px rgba(106, 90, 205, 0.3);
+        }
+        .virtual-test-buttons button:hover {
+            box-shadow: 0 8px 25px rgba(106, 90, 205, 0.5);
+        }
+
+
+        .test-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .parameter-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+            margin: 15px 0;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .parameter-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 12px;
+            border-left: 4px solid #e74c3c;
+            transition: all 0.4s ease;
+        }
+
+        .parameter-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+
+        .parameter-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #e74c3c;
+        }
+
+        .parameter-slider {
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(to right, #27ae60, #f1c40f, #e67e22, #e74c3c);
+            outline: none;
+            border-radius: 3px;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        .parameter-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(45deg, #fff, #f8f9fa);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(231, 76, 60, 0.8);
+            border: 2px solid #e74c3c;
+        }
+
+        .file-upload-zone {
+            border: 3px dashed #e74c3c;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            background: rgba(231, 76, 60, 0.1);
+            margin: 15px 0;
+            transition: all 0.4s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .file-upload-zone::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(231, 76, 60, 0.1), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .file-upload-zone:hover::before {
+            animation: shimmer 1s ease-in-out;
+            opacity: 1;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+
+        .file-upload-zone:hover {
+            border-color: #c0392b;
+            background: rgba(231, 76, 60, 0.2);
+            transform: scale(1.02);
+        }
+
+        .file-upload-zone.drag-over {
+            border-color: #27ae60;
+            background: rgba(39, 174, 96, 0.2);
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .uploaded-file {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin: 8px 0;
+            background: rgba(39, 174, 96, 0.2);
+            border-radius: 10px;
+            border-left: 4px solid #27ae60;
+            transition: all 0.3s ease;
+        }
+
+        .component-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin: 15px 0;
+        }
+
+        .component-item {
+            aspect-ratio: 1;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+            font-size: 0.8rem;
+            text-align: center;
+        }
+
+        .component-item:hover {
+            background: rgba(52, 152, 219, 0.3);
+            border-color: #3498db;
+            transform: scale(1.1) rotateY(5deg);
+            box-shadow: 0 10px 30px rgba(52, 152, 219, 0.4);
+        }
+
+        .component-item.selected {
+            border-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.3);
+            box-shadow: 0 0 25px rgba(231, 76, 60, 0.6);
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(231, 76, 60, 0.95);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.4);
+            transform: translateY(-100px);
+            transition: transform 0.4s ease;
+            z-index: 2000;
+            max-width: 350px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .notification.show {
+            transform: translateY(0);
+        }
+
+        .notification.success {
+            background: rgba(39, 174, 96, 0.95);
+        }
+
+        .notification.warning {
+            background: rgba(243, 156, 18, 0.95);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-input-button {
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            border: 2px solid #3498db;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            display: inline-block;
+            margin: 10px 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .file-input-button:hover {
+            background: linear-gradient(45deg, #2980b9, #3498db);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(52, 152, 219, 0.4);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #e74c3c, #c0392b, #8e44ad);
+            background-size: 200% 100%;
+            animation: progressShine 2s ease-in-out infinite;
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        @keyframes progressShine {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        #threeCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .viewport-controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .model-info {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            font-size: 0.85rem;
+            max-width: 300px;
+        }
+
+        .simulation-results {
+            margin-top: 15px;
+            padding: 12px;
+            background: rgba(52, 152, 219, 0.2);
+            border-radius: 10px;
+            border: 1px solid rgba(52, 152, 219, 0.5);
+            font-size: 0.9rem;
+            display: none; /* Hidden by default */
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(231, 76, 60, 0.3);
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        select option {
+            background: #2c3e50;
+            color: white;
+        }
+
+        input[type="number"] {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            border-radius: 6px;
+            color: white;
+            font-size: 0.85rem;
+            margin-bottom: 5px; /* Added for spacing in CAD inputs */
+        }
+
+        .cad-input-group {
+            margin-bottom: 10px;
+            padding: 10px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+        }
+
+        .cad-input-group label {
+            font-size: 0.75rem;
+            color: #3498db;
+            display: block;
+            margin-bottom: 3px;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0;
+            border-radius: 0;
+        }
+
+        .tab-button.active {
+            background: rgba(231, 76, 60, 0.8);
+        }
+
+        .parameter-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .damage-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .crack-line {
+            position: absolute;
+            background: #e74c3c;
+            height: 2px;
+            transform-origin: left center;
+            animation: crackGrow 1s ease-out;
+            box-shadow: 0 0 10px #e74c3c;
+        }
+
+        @keyframes crackGrow {
+            from { width: 0; opacity: 0; }
+            to { width: 100%; opacity: 1; }
+        }
+
+        .remove-file-btn {
+            background: #e74c3c;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            width: auto;
+            margin: 0;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 3px solid #e74c3c;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Styles for the new report section */
+        .report-content {
+            background: rgba(0, 128, 0, 0.1);
+            border: 1px solid rgba(0, 128, 0, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #eee;
+        }
+        .report-content h4 {
+            color: #00FF00;
+            margin-bottom: 10px;
+        }
+        .report-content p {
+            margin-bottom: 8px;
+        }
+        .report-content strong {
+            color: #00FF00;
+        }
+
+        /* Styles for 2D CAD and Extrude placeholders */
+        .cad-input-group.sketch-group {
+            background: rgba(52, 152, 219, 0.15);
+            border: 1px solid rgba(52, 152, 219, 0.4);
+        }
+        .cad-input-group.sketch-group label {
+            color: #87CEEB; /* Sky blue */
+        }
+        .cad-input-group.sketch-group button {
+            background: linear-gradient(45deg, #1E90FF, #4169E1); /* Dodger blue to Royal blue */
+            box-shadow: 0 4px 15px rgba(30, 144, 255, 0.3);
+        }
+
+        /* Styles for AR/VR buttons */
+        .ar-vr-buttons button {
+            background: linear-gradient(45deg, #8A2BE2, #9932CC); /* Blue Violet to Dark Orchid */
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3);
+        }
+        .ar-vr-buttons button:hover {
+            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.5);
+        }
+
+        /* Styles for Simulation buttons */
+        .simulation-buttons button {
+            background: linear-gradient(45deg, #FFD700, #DAA520); /* Gold to Goldenrod */
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+        }
+        .simulation-buttons button:hover {
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.5);
+        }
+
+        /* New styles for 2D CAD tools and planes */
+        .cad-input-group.sketch-tools {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .cad-input-group.sketch-tools button {
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            margin: 0;
+        }
+
+        .cad-input-group.sketch-planes {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .cad-input-group.sketch-planes button {
+            padding: 8px 10px;
+            font-size: 0.8rem;
+            margin: 0;
+            background: linear-gradient(45deg, #6A5ACD, #483D8B); /* Slate Blue to Dark Slate Blue */
+            box-shadow: 0 4px 10px rgba(106, 90, 205, 0.3);
+        }
+        .cad-input-group.sketch-planes button.active-plane {
+            background: linear-gradient(45deg, #32CD32, #228B22); /* Lime Green to Forest Green */
+            box-shadow: 0 0 15px rgba(50, 205, 50, 0.8);
+        }
+
+        /* Enhanced Grid Appearance */
+        .grid-plane {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.1; /* Subtle */
+            background-image: 
+                linear-gradient(0deg, transparent 24%, rgba(0, 255, 255, 0.1) 25%, rgba(0, 255, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.1) 75%, rgba(0, 255, 255, 0.1) 76%, transparent 77%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(0, 255, 255, 0.1) 25%, rgba(0, 255, 255, 0.1) 26%, transparent 27%, transparent 74%, rgba(0, 255, 255, 0.1) 75%, rgba(0, 255, 255, 0.1) 76%, transparent 77%, transparent);
+            background-size: 50px 50px; /* Adjust grid cell size */
+            animation: gridFlow 20s linear infinite;
+            z-index: 0; /* Behind 3D models */
+        }
+
+        @keyframes gridFlow {
+            from { background-position: 0 0; }
+            to { background-position: 50px 50px; } /* Moves the grid pattern */
+        }
+
+        /* New CAD Operations buttons */
+        .cad-operations-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .cad-operations-grid button {
+            background: linear-gradient(45deg, #20B2AA, #008B8B); /* Light Sea Green to Dark Cyan */
+            box-shadow: 0 4px 15px rgba(32, 178, 170, 0.3);
+        }
+
+        /* Color Picker for CAD */
+        .color-picker-group {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(52, 152, 219, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(52, 152, 219, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .color-picker-group input[type="color"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 40px;
+            height: 40px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 0;
+            border-radius: 50%;
+            overflow: hidden;
+        }
+        .color-picker-group input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker-group input[type="color"]::-webkit-color-swatch {
+            border: 2px solid #3498db;
+            border-radius: 50%;
+        }
+        .color-picker-group input[type="color"]::-moz-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker-group input[type="color"]::-moz-color-swatch {
+            border: 2px solid #3498db;
+            border-radius: 50%;
+        }
+
+        /* New styles for symmetric line axis selection */
+        .cad-input-group.symmetry-axis-selection {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .cad-input-group.symmetry-axis-selection button {
+            background: linear-gradient(45deg, #FF6347, #FF4500); /* Tomato to OrangeRed */
+            box-shadow: 0 4px 10px rgba(255, 99, 71, 0.3);
+        }
+        .cad-input-group.symmetry-axis-selection button.active-axis {
+            background: linear-gradient(45deg, #32CD32, #228B22); /* Lime Green to Forest Green */
+            box-shadow: 0 0 15px rgba(50, 205, 50, 0.8);
+        }
+
+/* Styles for AI Prompt Integration section */
+        .section.ai-prompt-section {
+            border: 1px solid rgba(138, 43, 226, 0.2);
+            box-shadow: 0 0 50px rgba(138, 43, 226, 0.3);
+        }
+        .section.ai-prompt-section h3 {
+            color: #8A2BE2;
+        }
+        .section.ai-prompt-section .icon {
+            background: linear-gradient(45deg, #8A2BE2, #4B0082);
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+        }
+        .ai-prompt-section button {
+            background: linear-gradient(45deg, #8A2BE2, #9932CC);
+            box-shadow: 0 4px 15px rgba(138, 43, 226, 0.3); 
+        }
+        .ai-prompt-section button:hover {
+            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.5);
+        }
+        .ai-prompt-section textarea {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            border-radius: 6px;
+            color: rgb(255, 255, 255);
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            resize: vertical;
+        }
+        .ai-prompt-section input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(138, 43, 226, 0.3);
+            border-radius: 6px;
+            color: rgb(0, 0, 0);
+            font-size: 0.85rem;
+            margin-bottom: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>🔬 Advanced Destructive Testing & CAD Lab</h1>
+            <button onclick="clearAllModels()" style="background: linear-gradient(45deg, #e74c3c, #c0392b); margin-bottom: 20px;">
+                🗑️ Remove All Components
+            </button>
+            
+            <div class="section">
+                <h3><span class="icon">📁</span>File Upload System</h3>
+                <label for="fileInput" class="file-input-button">
+                    📤 Browse & Upload 3D Models
+                </label>
+                <input type="file" id="fileInput" multiple accept=".obj,.stl,.json,.txt,.glb">
+                
+                <div class="file-upload-zone" id="fileDropZone">
+                    <div style="font-size: 2.5rem; margin-bottom: 15px;">📂</div>
+                    <div style="font-weight: bold; font-size: 1.1rem;">Drag & Drop 3D Models Here</div>
+                    <div style="font-size: 0.85rem; color: #ccc; margin-top: 10px;">
+                        OBJ • STL • JSON • TXT • GLB
+                    </div>
+                </div>
+                
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                
+                <div id="uploadedFiles"></div>
+                <button onclick="clearAllModels()" id="clearBtn" style="display: none; background: linear-gradient(45deg, #e74c3c, #c0392b);">
+                    🗑️ Clear All Models
+                </button>
+            </div>
+
+            <!-- Collaboration Controls (from File 1) -->
+            <div class="section">
+                <h3><span class="icon">👥</span>Team Collaboration</h3>
+                <input type="text" id="teamId" placeholder="Enter Team ID" style="width: 100%; margin-bottom: 8px;">
+                <div class="test-grid">
+                    <button onclick="joinTeam()" class="collaborative">🌐 Join Team</button>
+                    <button onclick="createTeam()" class="collaborative">➕ Create Team</button>
+                    <button onclick="startVideoCall()" class="collaborative">📹 Video Call</button>
+                    <button onclick="shareScreen()" class="collaborative">🖥️ Share Screen</button>
+                </div>
+                <div style="margin-top: 10px;">
+                    <input type="text" id="chatMessage" placeholder="Type message..." style="width: 100%; padding: 5px;">
+                    <button onclick="sendMessage()" style="width: 100%; margin: 0; padding: 5px;">Send Chat</button>
+                </div>
+            </div>
+
+            <div class="section">
+                <h3><span class="icon">🛠️</span>Integrated CAD Designer</h3>
+                
+                <div class="cad-input-group">
+                    <label for="cubeWidth">Cube Dimensions (W/H/D):</label>
+                    <input type="number" id="cubeWidth" value="2" min="0.1" step="0.1">
+                    <input type="number" id="cubeHeight" value="2" min="0.1" step="0.1">
+                    <input type="number" id="cubeDepth" value="2" min="0.1" step="0.1">
+                    <button onclick="createCustomShape('cube')" class="cad">📦 Create Custom Cube</button>
+                </div>
+
+                <div class="cad-input-group">
+                    <label for="cylinderRadius">Cylinder (Radius/Height):</label>
+                    <input type="number" id="cylinderRadius" value="1" min="0.1" step="0.1">
+                    <input type="number" id="cylinderHeight" value="3" min="0.1" step="0.1">
+                    <button onclick="createCustomShape('cylinder')" class="cad">🥫 Create Custom Cylinder</button>
+                </div>
+
+                <div class="cad-input-group">
+                    <label for="sphereRadius">Sphere Radius:</label>
+                    <input type="number" id="sphereRadius" value="1.5" min="0.1" step="0.1">
+                    <button onclick="createCustomShape('sphere')" class="cad">⚽ Create Custom Sphere</button>
+                </div>
+
+                <div class="cad-input-group">
+                    <label for="iBeamWebHeight">I-Beam (Web H/T, Flange W/T):</label>
+                    <input type="number" id="iBeamWebHeight" value="3" min="0.1" step="0.1" placeholder="Web Height">
+                    <input type="number" id="iBeamWebThickness" value="0.3" min="0.01" step="0.01" placeholder="Web Thickness">
+                    <input type="number" id="iBeamFlangeWidth" value="3" min="0.1" step="0.1" placeholder="Flange Width">
+                    <input type="number" id="iBeamFlangeThickness" value="0.3" min="0.01" step="0.01" placeholder="Flange Thickness">
+                    <button onclick="createCustomShape('beam')" class="cad">📏 Create Custom I-Beam</button>
+                </div>
+
+                <!-- Placeholder for 2D Sketching and Extrusion -->
+                <div class="cad-input-group sketch-group">
+                    <label>2D Sketching & Extrusion:</label>
+                    <div class="cad-input-group sketch-planes">
+                        <button onclick="selectSketchPlane('front', this)">Front Plane</button>
+                        <button onclick="selectSketchPlane('top', this)">Top Plane</button>
+                        <button onclick="selectSketchPlane('right', this)">Right Plane</button>
+                    </div>
+                    <div class="cad-input-group sketch-tools">
+                        <button onclick="selectDrawingTool('line')" class="cad">➖ Line</button>
+                        <button onclick="selectDrawingTool('symmetric_line')" class="cad">⮥ Symmetric Line</button>
+                        <button onclick="selectDrawingTool('circle')" class="cad">⭕ Circle</button>
+                        <button onclick="selectDrawingTool('rectangle')" class="cad">▭ Rectangle</button>
+                        <button onclick="selectDrawingTool('arc')" class="cad">⌒ Arc</button>
+                        <button onclick="selectDrawingTool('spline')" class="cad">〰️ Spline</button>
+                        <button onclick="showNotification('Trim tool selected (placeholder).', 'info')" class="cad">✂️ Trim</button>
+                        <button onclick="selectDrawingTool('smart_dimension')" class="cad">📏 Smart Dimension</button>
+                    </div>
+                    <div class="cad-input-group symmetry-axis-selection">
+                        <label style="grid-column: 1 / span 3; text-align: center;">Symmetry Axis:</label>
+                        <button onclick="selectSymmetryAxis('x', this)">X-Axis</button>
+                        <button onclick="selectSymmetryAxis('y', this)">Y-Axis</button>
+                        <button onclick="selectSymmetryAxis('z', this)">Z-Axis</button>
+                    </div>
+                    <button onclick="start2DSketch()" class="cad">✏️ Start 2D Sketch</button>
+                    <input type="number" id="extrusionDepth" value="1" min="0.1" step="0.1" placeholder="Extrusion Depth">
+                    <div class="cad-operations-grid">
+                        <button onclick="extrudeBoss()" class="cad">⬆️ Extrude Boss</button>
+                        <button onclick="extrudeCut()" class="cad">⬇️ Extrude Cut</button>
+                        <button onclick="applyFillet()" class="cad">➰ Fillet</button>
+                        <button onclick="applyMirror()" class="cad">↔️ Mirror</button>
+                    </div>
+                </div>
+
+                <div class="color-picker-group">
+                    <label for="modelColorPicker">Model Color:</label>
+                    <input type="color" id="modelColorPicker" value="#3498db" onchange="changeModelColor(this.value)">
+                    <button onclick="resetModelColor()" class="cad" style="width: auto; padding: 8px 12px; margin: 0;">Reset Color</button>
+                </div>
+                
+                <button onclick="resetCamera()" class="cad"> Isometric View</button>
+                <button onclick="togglePlanes()" class="cad"> Toggle Planes</button>
+                <button onclick="deleteSketchItems()" class="cad" style="background: linear-gradient(45deg, #e74c3c, #c0392b);">🗑️ Delete Sketch Items</button> <!-- NEW BUTTON -->
+                
+            </div>
+
+            <div class="section">
+                <h3><span class="icon">🧪</span>Material Properties</h3>
+                <select id="materialPreset" onchange="loadMaterialPreset()">
+                    <option value="custom">Custom Material</option>
+                    <option value="steel_mild">Mild Steel</option>
+                    <option value="steel_stainless">Stainless Steel 316</option>
+                    <option value="aluminum_6061">Aluminum 6061-T6</option>
+                    <option value="aluminum_7075">Aluminum 7075-T6</option>
+                    <option value="carbon_fiber">Carbon Fiber T300</option>
+                    <option value="titanium_grade2">Titanium Grade 2</option>
+                    <option value="abs_plastic">ABS Plastic</option>
+                    <option value="concrete">Reinforced Concrete</option>
+                </select>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 15px 0;">
+                    <div style="background: rgba(52, 152, 219, 0.1); padding: 10px; border-radius: 8px;">
+                        <label style="font-size: 0.75rem; color: #3498db;">Tensile Strength (MPa)</label>
+                        <input type="number" id="tensileStrength" value="400" min="1" max="5000" oninput="updateMaterialDisplay()">
+                    </div>
+                    <div style="background: rgba(52, 152, 219, 0.1); padding: 10px; border-radius: 8px;">
+                        <label style="font-size: 0.75rem; color: #3498db;">Density (g/cm³)</label>
+                        <input type="number" id="density" value="7.85" min="0.1" max="25" step="0.01" oninput="updateMaterialDisplay()">
+                    </div>
+                    <div style="background: rgba(52, 152, 219, 0.1); padding: 10px; border-radius: 8px;">
+                        <label style="font-size: 0.75rem; color: #3498db;">Young's Modulus (GPa)</label>
+                        <input type="number" id="elasticity" value="200" min="0.1" max="1200" oninput="updateMaterialDisplay()">
+                    </div>
+                    <div style="background: rgba(52, 152, 219, 0.1); padding: 10px; border-radius: 8px;">
+                        <label style="font-size: 0.75rem; color: #3498db;">Yield Strength (MPa)</label>
+                        <input type="number" id="yieldStrength" value="250" min="1" max="3000" oninput="updateMaterialDisplay()">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- NEW SECTION: AI Prompt Integration -->
+            <div class="section ai-prompt-section">
+                <h3><span class="icon">🧠</span>AI Model Integration</h3>
+                <div class="cad-input-group">
+                    <label for="aiApiKey">AI API Key:</label>
+                    <input type="password" id="aiApiKey" placeholder="Enter your AI API Key" />
+                </div>
+                <div class="cad-input-group">
+                    <label for="aiPrompt">AI Prompt:</label>
+                    <textarea id="aiPrompt" rows="4" placeholder="Enter your prompt for the AI model..."></textarea>
+                </div>
+                <button onclick="sendAIPrompt()" class="cad">🚀 Send Prompt to AI</button>
+                <div class="simulation-results" id="aiResponse" style="display: none;">
+                    <strong>🤖 AI Response:</strong>
+                    <div id="aiResponseContent"></div>
+                </div>
+            </div>
+            <!-- END NEW SECTION -->
+
+            <div class="section">
+                <h3><span class="icon">💥</span>Destructive Test Types</h3>
+                <div class="test-grid">
+                    <button onclick="startTest('crash')" class="destructive" id="crashBtn">🚗 Crash Test</button>
+                    <button onclick="startTest('pressure')" class="destructive" id="pressureBtn">💨 Pressure Burst</button>
+                    <button onclick="startTest('tension')" class="destructive" id="tensionBtn">↔️ Tensile Test</button>
+                    <button onclick="startTest('compression')" class="destructive" id="compressionBtn">↕️ Compression</button>
+                    <button onclick="startTest('fatigue')" class="destructive" id="fatigueBtn">🔄 Fatigue Test</button>
+                    <button onclick="startTest('thermal')" class="destructive" id="thermalBtn">🔥 Thermal Shock</button>
+                    <button onclick="startTest('impact')" class="destructive" id="impactBtn">⚡ Impact Test</button>
+                    <button onclick="startTest('vibration')" class="destructive" id="vibrationBtn">📳 Vibration Test</button>
+                    <button onclick="startTest('torsion')" class="destructive" id="torsionBtn">扭 Torsion Test</button>
+                    <button onclick="startTest('creep')" class="destructive" id="creepBtn">🐌 Creep Test</button>
+                    <button onclick="startTest('corrosion')" class="destructive" id="corrosionBtn">🧪 Corrosion Test</button>
+                </div>
+                <div class="simulation-results" id="simulationResults">
+                    <strong>📈 Simulation Results:</strong>
+                    <div id="resultsContent">No test results yet.</div>
+                </div>
+            </div>
+
+            <div class="section simulation-section">
+                <h3><span class="icon">⚙️</span>Advanced Simulation</h3>
+                <div class="simulation-buttons">
+                    <button onclick="startTest('fea')" class="simulation">📊 Start FEA Simulation</button>
+                    <button onclick="startTest('cfd')" class="simulation">💨 Start CFD Simulation</button>
+                    <button onclick="startTest('topology')" class="simulation">✨ Topology Optimization</button>
+                </div>
+            </div>
+
+            <!-- NEW SECTION: Virtual Test Workflow -->
+            <div class="section virtual-test-section">
+                <h3><span class="icon">🌐</span>Virtual Test Workflow</h3>
+                <div class="virtual-test-buttons">
+                    
+                    <button onclick="startVirtualTest('sensorData')">📊 Integrate Sensor Data</button>
+                    
+                </div>
+                <div class="simulation-results" id="virtualTestResults" style="display: none;">
+                    <strong>📈 Virtual Test Status:</strong>
+                    <div id="virtualTestContent">No virtual test running.</div>
+                </div>
+            </div>
+            <!-- END NEW SECTION -->
+
+            <div class="section ar-vr-section">
+                <h3><span class="icon">👁️‍🗨️</span>AR/VR & Visualization</h3>
+                <div class="ar-vr-buttons">
+                    <button onclick="enterARMode()"> Augmented Reality</button>
+                    <button onclick="enterVRMode()"> Virtual Reality</button>
+                    <button onclick="activate3DAnnotationTool()">📝 3D Annotation</button>
+                    <button onclick="toggleHandTracking()" class="cad">✋ Toggle Hand Tracking</button> <!-- NEW BUTTON -->
+                </div>
+            </div>
+
+            <div class="section">
+                <h3><span class="icon">⚗️</span>Test Parameters</h3>
+                <div class="parameter-tabs">
+                    <button class="tab-button active" onclick="switchTab('mechanical')">Mechanical</button>
+                    <button class="tab-button" onclick="switchTab('thermal')">Thermal</button>
+                    <button class="tab-button" onclick="switchTab('environmental')">Environmental</button>
+                </div>
+
+                <div class="tab-content active" id="mechanical-tab">
+                    <div class="parameter-grid">
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span>Impact Force</span>
+                                <span id="param1Value">50 kN</span>
+                            </div>
+                            <input type="range" class="parameter-slider" id="param1" min="0" max="1000" value="50" oninput="updateParameter(1, this.value, 'kN')">
+                        </div>
+                        
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span>Impact Speed</span>
+                                <span id="param2Value">60 km/h</span>
+                            </div>
+                            <input type="range" class="parameter-slider" id="param2" min="0" max="300" value="60" oninput="updateParameter(2, this.value, 'km/h')">
+                        </div>
+
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span>Load Duration</span>
+                                <span id="param3Value">5 s</span>
+                            </div>
+                            <input type="range" class="parameter-slider" id="param3" min="0.1" max="60" value="5" step="0.1" oninput="updateParameter(3, this.value, 's')">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="thermal-tab">
+                    <div class="parameter-grid">
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span>Temperature</span>
+                                <span id="param4Value">200 °C</span>
+                            </div>
+                            <input type="range" class="parameter-slider" id="param4" min="-200" max="2000" value="200" oninput="updateParameter(4, this.value, '°C')">
+                        </div>
+                        
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span>Heating Rate</span>
+                                <span id="param5Value">10 °C/min</span>
+                            </div>
+                            <input type="range" class="parameter-slider" id="param5" min="1" max="100" value="10" oninput="updateParameter(5, this.value, '°C/min')">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content" id="environmental-tab">
+                    <div class="parameter-grid">
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span>Humidity</span>
+                                <span id="param6Value">65 %</span>
+                            </div>
+                            <input type="range" class="parameter-slider" id="param6" min="0" max="100" value="65" oninput="updateParameter(6, this.value, '%')">
+                        </div>
+                        
+                        <div class="parameter-item">
+                            <div class="parameter-label">
+                                <span>Salt Spray</span>
+                                <span id="param7Value">25 g/m²h</span>
+                            </div>
+                            <input type="range" class="parameter-slider" id="param7" min="0" max="100" value="25" oninput="updateParameter(7, this.value, 'g/m²h')">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section report-section">
+                <h3><span class="icon">📄</span>Final Test Report</h3>
+                <div class="report-content" id="finalTestReportContent">
+                    <p>No final report generated yet. Run a destructive test to see results here.</p>
+                </div>
+                <button onclick="generateFinalReport()" style="background: linear-gradient(45deg, #008000, #006400);">
+                    Generate Report
+                </button>
+                <button onclick="printFinalReport()" style="background: linear-gradient(45deg, #3498db, #2980b9); margin-top: 10px;">
+                    🖨️ Print Report
+                </button>
+                <button onclick="copyFinalReport()" style="background: linear-gradient(45deg, #f39c12, #e67e22); margin-top: 6px;">
+                    📋 Copy Report
+                </button>
+            </div>
+
+        </div>
+
+        <div class="viewport">
+            <canvas id="threeCanvas"></canvas>
+            
+            <div class="viewport-controls">
+                <div><strong>🎮 Controls:</strong></div>
+                <div>• Left Click + Drag: Rotate</div>
+                <div>• Scroll: Zoom</div>
+                <div>• Right Click + Drag: Pan</div>
+            </div>
+
+            <div class="model-info" id="modelInfo" style="display: none;">
+                <div><strong>📊 Model Information:</strong></div>
+                <div id="modelStats"></div>
+            </div>
+
+            <div class="damage-overlay" id="damageOverlay"></div>
+        </div>
+    </div>
+
+    <div id="notification" class="notification"></div>
+
+    <script>
+        // Global variables
+        let scene, camera, renderer, controls;
+        let loadedModels = [];
+        let uploadedFiles = [];
+        let currentModel = null;
+        let isTestRunning = false;
+        let lastTestResults = null; // Store last test results for the report
+        // MODIFIED: Declare multiple grid helpers
+        let gridHelperXZ, gridHelperXY, gridHelperYZ; 
+
+        // Global variables for 2D sketching
+        let currentSketchPlane = null; // 'front', 'top', 'right'
+        let sketchPoints = [];
+        let drawingMode = null; // 'line', 'circle', 'rectangle', 'symmetric_line', 'arc', 'spline', 'smart_dimension'
+        let annotations = []; // Global variable to store annotations
+        let currentSymmetryAxis = null; // 'x', 'y', 'z'
+        let dimensionObjects = []; // To store dimension labels for clearing
+        let sketchObjects = []; // To store actual drawn sketch lines, circles, etc.
+        let isSketchingMode = false; // NEW: Flag to indicate if sketching mode is active
+        let dashedLines = []; // NEW: To store visual dashed lines for auto-adjustment
+
+        // --- Mediapipe Hands Integration Variables ---
+        let hands;
+        let webcamVideoElement;
+        let handTrackingActive = false; // Flag to control hand tracking
+        // --- End Mediapipe Hands Integration Variables ---
+        
+        // Material presets
+        const materialPresets = {
+            steel_mild: { tensile: 400, density: 7.85, elasticity: 200, yield: 250 },
+            steel_stainless: { tensile: 520, density: 8.00, elasticity: 200, yield: 310 },
+            aluminum_6061: { tensile: 310, density: 2.70, elasticity: 69, yield: 276 },
+            aluminum_7075: { tensile: 572, density: 2.81, elasticity: 72, yield: 503 },
+            carbon_fiber: { tensile: 3500, density: 1.60, elasticity: 230, yield: 3500 },
+            titanium_grade2: { tensile: 345, density: 4.51, elasticity: 103, yield: 275 },
+            abs_plastic: { tensile: 40, density: 1.05, elasticity: 2.3, yield: 30 },
+            concrete: { tensile: 3, density: 2.40, elasticity: 30, yield: 25 }
+        };
+
+        // Material colors for visual representation
+        const materialColors = {
+            steel_mild: 0x7F8C8D, // Gray
+            steel_stainless: 0xBDC3C7, // Light Gray
+            aluminum_6061: 0x95A5A6, // Cadet Blue
+            aluminum_7075: 0x7B8A8B, // Darker Cadet Blue
+            carbon_fiber: 0x2C3E50, // Dark Blue/Black
+            titanium_grade2: 0x6C7A89, // Blue Gray
+            abs_plastic: 0xF39C12, // Orange (common ABS color)
+            concrete: 0x9B9B9B // Medium Gray
+        };
+
+        // Component options by industry
+        const componentOptions = {
+            automotive: [
+                { name: 'Engine Block', icon: '🔧' },
+                { name: 'Chassis Frame', icon: '🏗️' },
+                { name: 'Brake Disc', icon: '🛑' },
+                { name: 'Suspension', icon: '🌊' },
+                { name: 'Bumper', icon: '🛡️' },
+                { name: 'Door Panel', icon: '🚪' }
+            ],
+            aerospace: [
+                { name: 'Wing Structure', icon: '✈️' },
+                { name: 'Fuselage', icon: '🚀' },
+                { name: 'Landing Gear', icon: '🛬' },
+                { name: 'Engine Mount', icon: '⚙️' },
+                { name: 'Control Surface', icon: '🎛️' },
+                { name: 'Pressure Hull', icon: '🔘' }
+            ],
+            marine: [
+                { name: 'Hull Section', icon: '🚢' },
+                { name: 'Propeller', icon: '🌀' },
+                { name: 'Rudder', icon: '🎯' },
+                { name: 'Mast', icon: '📡' },
+                { name: 'Deck Plate', icon: '🏁' },
+                { name: 'Bulkhead', icon: '🧱' }
+            ],
+            construction: [
+                { name: 'I-Beam', icon: '📏' },
+                { name: 'Column', icon: '🏛️' },
+                { name: 'Foundation', icon: '🏗️' },
+                { name: 'Rebar', icon: '🔗' },
+                { name: 'Panel', icon: '🟫' },
+                { name: 'Joint', icon: '🔧' }
+            ],
+            industrial: [
+                { name: 'Gear', icon: '⚙️' },
+                { name: 'Shaft', icon: '📏' },
+                { name: 'Bearing', icon: '⭕' },
+                { name: 'Valve', icon: '🔧' },
+                { name: 'Pipe', icon: '🚰' },
+                { name: 'Tank', icon: '🛢️' }
+            ],
+            energy: [
+                { name: 'Turbine Blade', icon: '🌪️' },
+                { name: 'Generator Housing', icon: '⚡' },
+                { name: 'Power Line', icon: '🔌' },
+                { name: 'Transformer', icon: '📦' },
+                { name: 'Solar Panel', icon: '☀️' },
+                { name: 'Battery Casing', icon: '🔋' }
+            ]
+        };
+
+        // Initialize Three.js scene
+        function initThreeJS() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x1a1a2e);
+
+            // Camera setup
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(5, 5, 5);
+            camera.lookAt(0, 0, 0);
+
+            // Renderer setup
+            const canvas = document.getElementById('threeCanvas');
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+
+            const pointLight = new THREE.PointLight(0xe74c3c, 0.5, 100);
+            pointLight.position.set(-10, 10, 10);
+            scene.add(pointLight);
+
+            // Basic mouse controls (simplified orbit controls)
+            setupMouseControls();
+
+            // MODIFIED: Create and add multiple grid helpers
+            const gridSize = 20;
+            const divisions = 20;
+            const gridColor = new THREE.Color(0x00ffff); // Cyan
+            const axisColor = new THREE.Color(0x008080); // Teal
+            const gridOpacity = 0.2;
+
+            // XZ Plane (Top/Ground Plane)
+            gridHelperXZ = new THREE.GridHelper(gridSize, divisions, gridColor, axisColor);
+            gridHelperXZ.material.opacity = gridOpacity;
+            gridHelperXZ.material.transparent = true;
+            scene.add(gridHelperXZ);
+
+            // XY Plane (Front Plane)
+            gridHelperXY = new THREE.GridHelper(gridSize, divisions, gridColor, axisColor);
+            gridHelperXY.rotation.x = Math.PI / 2; // Rotate to align with XY plane
+            gridHelperXY.material.opacity = gridOpacity;
+            gridHelperXY.material.transparent = true;
+            gridHelperXY.visible = false; // Start hidden
+            scene.add(gridHelperXY);
+
+            // YZ Plane (Right Plane)
+            gridHelperYZ = new THREE.GridHelper(gridSize, divisions, gridColor, axisColor);
+            gridHelperYZ.rotation.z = Math.PI / 2; // Rotate to align with YZ plane
+            gridHelperYZ.material.opacity = gridOpacity;
+            gridHelperYZ.material.transparent = true;
+            gridHelperYZ.visible = false; // Start hidden
+            scene.add(gridHelperYZ);
+
+            // Render loop
+            animate();
+        }
+
+        // Simplified mouse controls
+        function setupMouseControls() {
+            let isMouseDown = false;
+            let mouseX = 0, mouseY = 0;
+
+            const canvas = document.getElementById('threeCanvas');
+
+            canvas.addEventListener('mousedown', (event) => {
+                isMouseDown = true;
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            });
+
+            canvas.addEventListener('mouseup', () => {
+                isMouseDown = false;
+            });
+
+            canvas.addEventListener('mousemove', (event) => {
+                if (!isMouseDown) return;
+                // NEW: Disable rotation if sketching mode is active and left mouse button is down
+                if (isSketchingMode && event.buttons === 1) return; 
+
+                const deltaX = event.clientX - mouseX;
+                const deltaY = event.clientY - mouseY;
+
+                // Rotate camera around the origin
+                const spherical = new THREE.Spherical();
+                spherical.setFromVector3(camera.position);
+                spherical.theta -= deltaX * 0.01;
+                spherical.phi += deltaY * 0.01;
+                spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+
+                camera.position.setFromSpherical(spherical);
+                camera.lookAt(0, 0, 0);
+
+                mouseX = event.clientX;
+                mouseY = event.clientY;
+            });
+
+            canvas.addEventListener('wheel', (event) => {
+                event.preventDefault();
+                const zoomSpeed = 0.1;
+                const distance = camera.position.length();
+                
+                if (event.deltaY > 0) {
+                    camera.position.multiplyScalar(1 + zoomSpeed);
+                } else {
+                    camera.position.multiplyScalar(1 - zoomSpeed);
+                }
+                
+                // Prevent camera from going too close or too far
+                const newDistance = camera.position.length();
+                if (newDistance < 1) camera.position.setLength(1);
+                if (newDistance > 50) camera.position.setLength(50);
+            });
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Removed automatic rotation of loadedModels
+            // loadedModels.forEach(model => {
+            //     if (model && model.rotation) {
+            //         model.rotation.y += 0.005;
+            //     }
+            // });
+
+            renderer.render(scene, camera);
+        }
+
+        // File upload functionality
+        function initFileUpload() {
+            const fileInput = document.getElementById('fileInput');
+            const dropZone = document.getElementById('fileDropZone');
+
+            fileInput.addEventListener('change', handleFileSelect);
+            
+            // Drag and drop functionality
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('drag-over');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('drag-over');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                handleFiles(files);
+            });
+
+            dropZone.addEventListener('click', () => {
+                fileInput.click();
+            });
+        }
+
+        function handleFileSelect(event) {
+            const files = event.target.files;
+            handleFiles(files);
+        }
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            showProgress();
+            let processedFiles = 0;
+
+            for (let file of files) {
+                if (isValidFileType(file)) {
+                    uploadedFiles.push(file);
+                    processFile(file, () => {
+                        processedFiles++;
+                        updateProgress((processedFiles / files.length) * 100);
+                        
+                        if (processedFiles === files.length) {
+                            hideProgress();
+                            updateFileList();
+                            showNotification('Files uploaded successfully!', 'success');
+                        }
+                    });
+                } else {
+                    showNotification(`Invalid file type: ${file.name}`, 'warning');
+                }
+            }
+        }
+
+        function isValidFileType(file) {
+            const validTypes = ['.obj', '.stl', '.json', '.txt', '.glb']; // Added .glb
+            const extension = '.' + file.name.split('.').pop().toLowerCase();
+            return validTypes.includes(extension);
+        }
+
+        function processFile(file, callback) {
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const content = event.target.result;
+                const extension = '.' + file.name.split('.').pop().toLowerCase();
+                
+                try {
+                    switch (extension) {
+                        case '.obj':
+                            loadOBJModel(content, file.name);
+                            break;
+                        case '.stl':
+                            loadSTLModel(content, file.name);
+                            break;
+                        case '.json':
+                            loadJSONModel(content, file.name);
+                            break;
+                        case '.glb': // New case for GLB
+                            loadGLBModel(file, content);
+                            break;
+                        default:
+                            createPlaceholderModel(file.name);
+                    }
+                    callback();
+                } catch (error) {
+                    showNotification(`Error loading ${file.name}: ${error.message}`, 'warning');
+                    callback();
+                }
+            };
+            
+            reader.onerror = function() {
+                showNotification(`Error reading ${file.name}`, 'warning');
+                callback();
+            };
+            
+            // For GLB, read as ArrayBuffer
+            if (file.name.toLowerCase().endsWith('.glb')) {
+                reader.readAsArrayBuffer(file);
+            } else {
+                reader.readAsText(file);
+            }
+        }
+
+        // Simple OBJ loader (basic implementation)
+        function loadOBJModel(content, filename) {
+            const lines = content.split('\n');
+            const vertices = [];
+            const faces = [];
+
+            for (let line of lines) {
+                const parts = line.trim().split(/\s+/);
+                
+                if (parts[0] === 'v') {
+                    vertices.push(
+                        parseFloat(parts[1]),
+                        parseFloat(parts[2]),
+                        parseFloat(parts[3])
+                    );
+                } else if (parts[0] === 'f') {
+                    // Simple triangle faces (ignoring texture/normal indices)
+                    const face = [];
+                    for (let i = 1; i < parts.length; i++) {
+                        const vertexIndex = parseInt(parts[i].split('/')[0]) - 1;
+                        face.push(vertexIndex);
+                    }
+                    faces.push(face);
+                }
+            }
+
+            if (vertices.length > 0) {
+                createMeshFromData(vertices, faces, filename);
+            } else {
+                createPlaceholderModel(filename);
+            }
+        }
+
+        function loadSTLModel(content, filename) {
+            // Basic STL text format parsing
+            if (content.includes('facet normal')) {
+                const vertices = [];
+                const faces = [];
+                const lines = content.split('\n');
+                let vertexIndex = 0;
+
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line.startsWith('vertex')) {
+                        const coords = line.split(/\s+/);
+                        vertices.push(
+                            parseFloat(coords[1]),
+                            parseFloat(coords[2]),
+                            parseFloat(coords[3])
+                        );
+                        
+                        if (vertexIndex % 3 === 2) {
+                            faces.push([vertexIndex - 2, vertexIndex - 1, vertexIndex]);
+                        }
+                        vertexIndex++;
+                    }
+                }
+
+                if (vertices.length > 0) {
+                    createMeshFromData(vertices, faces, filename);
+                } else {
+                    createPlaceholderModel(filename);
+                }
+            } else {
+                createPlaceholderModel(filename);
+            }
+        }
+
+        function loadJSONModel(content, filename) {
+            try {
+                const data = JSON.parse(content);
+                if (data.vertices && data.faces) {
+                    createMeshFromData(data.vertices, data.faces, filename);
+                } else {
+                    createPlaceholderModel(filename);
+                }
+            } catch (error) {
+                createPlaceholderModel(filename);
+            }
+        }
+
+        // New function for GLB loading
+        function loadGLBModel(file, content) {
+            const loader = new THREE.GLTFLoader();
+            loader.parse(content, '', (gltf) => {
+                const model = gltf.scene;
+                model.userData = { filename: file.name, type: 'uploaded' };
+
+                // Center and scale the model
+                const box = new THREE.Box3().setFromObject(model);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+                const maxDim = Math.max(size.x, size.y, size.z);
+
+                model.position.sub(center);
+                model.scale.setScalar(3 / maxDim);
+
+                scene.add(model);
+                loadedModels.push(model);
+                currentModel = model;
+                updateModelInfo(model);
+                showNotification(`GLB model "${file.name}" loaded successfully!`, 'success');
+            }, (error) => {
+                showNotification(`Error loading GLB model "${file.name}": ${error}`, 'warning');
+            });
+        }
+
+        function createMeshFromData(vertices, faces, filename) {
+            const geometry = new THREE.BufferGeometry();
+            
+            // Convert faces to indices array
+            const indices = [];
+            // Assuming faces are already triangulated or will be handled by Three.js
+            // For simplicity, directly use indices if available, otherwise assume triangles
+            if (faces.length > 0 && Array.isArray(faces[0])) { // Check if faces are arrays of indices
+                for (let face of faces) {
+                    if (face.length === 3) {
+                        indices.push(face[0], face[1], face[2]);
+                    } else if (face.length > 3) { // Triangulate if more than 3 vertices
+                        for (let i = 1; i < face.length - 1; i++) {
+                            indices.push(face[0], face[i], face[i + 1]);
+                        }
+                    }
+                }
+            } else { // Assume vertices are already ordered for triangles
+                for (let i = 0; i < vertices.length / 3; i++) {
+                    indices.push(i);
+                }
+            }
+
+
+            // Set positions
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            if (indices.length > 0) {
+                geometry.setIndex(indices);
+            }
+            geometry.computeVertexNormals();
+
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x3498db,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.9
+            });
+
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { filename: filename, type: 'uploaded' };
+
+            // Center and scale the model
+            const box = new THREE.Box3().setFromObject(mesh);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const maxDim = Math.max(size.x, size.y, size.z);
+            
+            mesh.position.sub(center);
+            mesh.scale.setScalar(3 / maxDim);
+
+            scene.add(mesh);
+            loadedModels.push(mesh);
+            currentModel = mesh;
+
+            updateModelInfo(mesh);
+        }
+
+        function createPlaceholderModel(filename) {
+            const geometry = new THREE.BoxGeometry(2, 1, 1);
+            const material = new THREE.MeshPhongMaterial({ color: 0x95a5a6 });
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.userData = { filename: filename, type: 'placeholder' };
+
+            scene.add(mesh);
+            loadedModels.push(mesh);
+            currentModel = mesh;
+
+            updateModelInfo(mesh);
+        }
+
+        // Create basic shapes
+        function createCustomShape(type) {
+            let geometry;
+            let material = new THREE.MeshPhongMaterial({
+                color: 0x3498db,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            let mesh;
+
+            switch (type) {
+                case 'cube':
+                    const cubeWidth = parseFloat(document.getElementById('cubeWidth').value);
+                    const cubeHeight = parseFloat(document.getElementById('cubeHeight').value);
+                    const cubeDepth = parseFloat(document.getElementById('cubeDepth').value);
+                    geometry = new THREE.BoxGeometry(cubeWidth, cubeHeight, cubeDepth);
+                    mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(0, 0, 0); // Ensure created at origin
+                    break;
+                case 'cylinder':
+                    const cylinderRadius = parseFloat(document.getElementById('cylinderRadius').value);
+                    const cylinderHeight = parseFloat(document.getElementById('cylinderHeight').value);
+                    geometry = new THREE.CylinderGeometry(cylinderRadius, cylinderRadius, cylinderHeight, 32);
+                    mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(0, 0, 0); // Ensure created at origin
+                    break;
+                case 'sphere':
+                    const sphereRadius = parseFloat(document.getElementById('sphereRadius').value);
+                    geometry = new THREE.SphereGeometry(sphereRadius, 32, 32);
+                    mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(0, 0, 0); // Ensure created at origin
+                    break;
+                case 'beam':
+                    const webHeight = parseFloat(document.getElementById('iBeamWebHeight').value);
+                    const webThickness = parseFloat(document.getElementById('iBeamWebThickness').value);
+                    const flangeWidth = parseFloat(document.getElementById('iBeamFlangeWidth').value);
+                    const flangeThickness = parseFloat(document.getElementById('iBeamFlangeThickness').value);
+
+                    const group = new THREE.Group();
+                    
+                    // Horizontal flanges
+                    const flange1 = new THREE.Mesh(new THREE.BoxGeometry(flangeWidth, flangeThickness, 1), material);
+                    flange1.position.y = webHeight / 2 + flangeThickness / 2;
+                    group.add(flange1);
+                    
+                    const flange2 = new THREE.Mesh(new THREE.BoxGeometry(flangeWidth, flangeThickness, 1), material);
+                    flange2.position.y = -(webHeight / 2 + flangeThickness / 2);
+                    group.add(flange2);
+                    
+                    // Vertical web
+                    const web = new THREE.Mesh(new THREE.BoxGeometry(webThickness, webHeight, 1), material);
+                    group.add(web);
+                    
+                    group.userData = { filename: `I-Beam_${Date.now()}`, type: 'generated' };
+                    scene.add(group);
+                    loadedModels.push(group);
+                    currentModel = group;
+                    updateModelInfo(group);
+                    showNotification(`Custom I-Beam created successfully!`, 'success');
+                    return;
+                default:
+                    showNotification('Unknown shape type!', 'warning');
+                    return;
+            }
+
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.userData = { filename: `${type}_${Date.now()}`, type: 'generated' };
+
+            scene.add(mesh);
+            loadedModels.push(mesh);
+            currentModel = mesh;
+
+            updateModelInfo(mesh);
+            showNotification(`Custom ${type.charAt(0).toUpperCase() + type.slice(1)} created successfully!`, 'success');
+        }
+
+        // Reset camera position
+        function resetCamera() {
+            camera.position.set(5, 5, 5);
+            camera.lookAt(0, 0, 0);
+            showNotification('Camera reset to default position', 'success');
+        }
+
+        // Update model information display
+        function updateModelInfo(model) {
+            const modelInfo = document.getElementById('modelInfo');
+            const modelStats = document.getElementById('modelStats');
+            
+            if (model && model.geometry) {
+                const geometry = model.geometry;
+                let vertexCount = 0;
+                let faceCount = 0;
+
+                if (geometry.attributes && geometry.attributes.position) {
+                    vertexCount = geometry.attributes.position.count;
+                }
+                
+                if (geometry.index) {
+                    faceCount = geometry.index.count / 3;
+                } else {
+                    faceCount = vertexCount / 3;
+                }
+
+                const box = new THREE.Box3().setFromObject(model);
+                const size = box.getSize(new THREE.Vector3());
+
+                modelStats.innerHTML = `
+                    <div>📝 Name: ${model.userData.filename}</div>
+                    <div>📊 Vertices: ${vertexCount.toLocaleString()}</div>
+                    <div>🔺 Faces: ${Math.floor(faceCount).toLocaleString()}</div>
+                    <div>📏 Size: ${size.x.toFixed(2)} × ${size.y.toFixed(2)} × ${size.z.toFixed(2)}</div>
+                    <div>🎯 Type: ${model.userData.type}</div>
+                `;
+                modelInfo.style.display = 'block';
+            } else {
+                modelInfo.style.display = 'none';
+            }
+        }
+
+        // File management
+        function updateFileList() {
+            const container = document.getElementById('uploadedFiles');
+            const clearBtn = document.getElementById('clearBtn');
+            
+            container.innerHTML = '';
+            
+            uploadedFiles.forEach((file, index) => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'uploaded-file';
+                fileDiv.innerHTML = `
+                    <div>
+                        <div style="font-weight: bold;">${file.name}</div>
+                        <div style="font-size: 0.8rem; color: #ccc;">${(file.size / 1024).toFixed(1)} KB</div>
+                    </div>
+                    <button class="remove-file-btn" onclick="removeFile(${index})">✕</button>
+                `;
+                container.appendChild(fileDiv);
+            });
+
+            clearBtn.style.display = uploadedFiles.length > 0 ? 'block' : 'none';
+        }
+
+        function removeFile(index) {
+            // Remove from uploaded files
+            uploadedFiles.splice(index, 1);
+            
+            // Remove corresponding model from scene
+            if (loadedModels[index]) {
+                scene.remove(loadedModels[index]);
+                loadedModels.splice(index, 1);
+            }
+            
+            updateFileList();
+            showNotification('File removed successfully', 'success');
+        }
+
+        function clearAllModels() {
+            // Remove all models from scene
+            loadedModels.forEach(model => {
+                scene.remove(model);
+            });
+            
+            loadedModels = [];
+            uploadedFiles = [];
+            currentModel = null;
+            lastTestResults = null; // Clear test results
+            
+            // Clear all annotations from scene
+            annotations.forEach(annotation => {
+                if (annotation.sprite && annotation.sprite.parent) {
+                    annotation.sprite.parent.remove(annotation.sprite);
+                }
+            });
+            annotations = []; // Clear annotation array
+
+            // Clear all dimensions from scene
+            dimensionObjects.forEach(dim => {
+                if (dim.line && dim.line.parent) dim.line.parent.remove(dim.line);
+                if (dim.text && dim.text.parent) dim.text.parent.remove(dim.text);
+                if (dim.point && dim.point.parent) dim.point.parent.remove(dim.point); // Clear temporary points
+            });
+            dimensionObjects = [];
+
+            // Clear all sketch objects
+            sketchObjects.forEach(obj => {
+                if (obj.parent) {
+                    obj.parent.remove(obj);
+                }
+            });
+            sketchObjects = [];
+
+            // NEW: Clear dashed lines
+            clearDashedLines();
+
+            updateFileList();
+            document.getElementById('modelInfo').style.display = 'none';
+            document.getElementById('simulationResults').style.display = 'none'; // Hide results
+            document.getElementById('finalTestReportContent').innerHTML = '<p>No final report generated yet. Run a destructive test to see results here.</p>'; // Clear report
+            showNotification('All models and sketches cleared', 'success');
+        }
+
+        // Progress bar functions
+        function showProgress() {
+            document.getElementById('progressBar').style.display = 'block';
+            updateProgress(0);
+        }
+
+        function updateProgress(percent) {
+            document.getElementById('progressFill').style.width = percent + '%';
+        }
+
+        function hideProgress() {
+            setTimeout(() => {
+                document.getElementById('progressBar').style.display = 'none';
+            }, 500);
+        }
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.classList.add('show');
+
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        // Component selection
+        function updateComponentOptions() {
+            const industry = document.getElementById('industrySelect').value;
+            const grid = document.getElementById('componentGrid');
+            const components = componentOptions[industry] || [];
+
+            grid.innerHTML = '';
+            components.forEach((component, index) => {
+                const item = document.createElement('div');
+                item.className = 'component-item';
+                item.onclick = () => selectComponent(component.name, item);
+                item.innerHTML = `
+                    <div style="font-size: 1.5rem; margin-bottom: 5px;">${component.icon}</div>
+                    <div style="font-size: 0.75rem; font-weight: bold;">${component.name}</div>
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        function selectComponent(name, element) {
+            // Remove previous selection
+            document.querySelectorAll('.component-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            // Add selection to clicked item
+            element.classList.add('selected');
+            
+            // Update selected component display
+            document.getElementById('selectedComponent').textContent = name;
+            
+            showNotification(`Selected component: ${name}`, 'success');
+        }
+
+        // Parameter management
+        function updateParameter(paramNum, value, unit) {
+            document.getElementById(`param${paramNum}Value`).textContent = `${value} ${unit}`;
+        }
+
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            event.target.classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+
+        // Material preset loading
+        function loadMaterialPreset() {
+            const preset = document.getElementById('materialPreset').value;
+            if (preset !== 'custom' && materialPresets[preset]) {
+                const props = materialPresets[preset];
+                document.getElementById('tensileStrength').value = props.tensile;
+                document.getElementById('density').value = props.density;
+                document.getElementById('elasticity').value = props.elasticity;
+                document.getElementById('yieldStrength').value = props.yield;
+                updateMaterialDisplay(); // Call to update color based on new preset
+                showNotification(`Loaded ${preset.replace('_', ' ')} properties`, 'success');
+            } else if (preset === 'custom') {
+                // If custom is selected, reset color to default CAD color or current color picker value
+                const currentColor = document.getElementById('modelColorPicker').value;
+                changeModelColor(currentColor);
+                showNotification('Custom material selected. Adjust properties manually.', 'info');
+            }
+        }
+
+        // MODIFIED: updateMaterialDisplay function to use materialColors
+        function updateMaterialDisplay() {
+            if (!currentModel || !currentModel.material) return;
+            const preset = document.getElementById('materialPreset').value;
+            if (preset === 'custom') {
+                const color = document.getElementById('modelColorPicker').value;
+                currentModel.material.color.set(color);
+            } else {
+                const colorHex = materialColors[preset] || 0x3498db; // Fallback to default blue
+                currentModel.material.color.setHex(colorHex);
+            }
+        }
+
+        // Destructive testing simulation
+        function startTest(testType) {
+            if (!currentModel) {
+                showNotification('Please load or create a model first!', 'warning');
+                return;
+            }
+
+            if (isTestRunning) {
+                showNotification('A test is already running!', 'warning');
+                return;
+            }
+
+            isTestRunning = true;
+            const button = document.getElementById(`${testType}Btn`);
+            if (button) button.classList.add('active'); // Only add active class if button exists
+
+            showNotification(`Starting ${testType} test...`, 'info');
+            
+            // Simulate test duration with progress
+            showProgress();
+            // Add a loading spinner for simulation
+            const simulationResultsDiv = document.getElementById('simulationResults');
+            simulationResultsDiv.style.display = 'block';
+            document.getElementById('resultsContent').innerHTML = '<div class="loading-spinner"></div><p style="text-align: center; margin-top: 10px;">Running simulation...</p>';
+
+            let progress = 0;
+            const testInterval = setInterval(() => {
+                progress += 2;
+                updateProgress(progress);
+                
+                if (progress >= 100) {
+                    clearInterval(testInterval);
+                    completeTest(testType, button);
+                }
+            }, 50);
+
+            // Apply visual effects during test
+            applyTestEffects(testType);
+        }
+
+        function applyTestEffects(testType) {
+            if (!currentModel || !currentModel.material) return;
+
+            const originalColor = currentModel.material.color.getHex();
+            const originalScale = currentModel.scale.clone();
+            const originalPosition = currentModel.position.clone();
+
+            // Reset model appearance before applying new effects
+            // Use the color from the current material preset or custom color picker
+            const currentMaterialPreset = document.getElementById('materialPreset').value;
+            let baseColorForEffects = 0x3498db; // Default fallback
+            if (currentMaterialPreset === 'custom') {
+                baseColorForEffects = parseInt(document.getElementById('modelColorPicker').value.replace('#', '0x'));
+            } else if (materialColors[currentMaterialPreset]) {
+                baseColorForEffects = materialColors[currentMaterialPreset];
+            }
+            currentModel.material.color.setHex(baseColorForEffects);
+            currentModel.material.opacity = 0.8;
+            currentModel.scale.copy(originalScale);
+            currentModel.position.copy(originalPosition);
+
+            switch (testType) {
+                case 'crash':
+                case 'impact':
+                    // Shake effect + temporary deformation
+                    let shakeCount = 0;
+                    const shakeInterval = setInterval(() => {
+                        currentModel.position.x = originalPosition.x + (Math.random() - 0.5) * 0.1;
+                        currentModel.position.y = originalPosition.y + (Math.random() - 0.5) * 0.1;
+                        currentModel.position.z = originalPosition.z + (Math.random() - 0.5) * 0.1;
+                        
+                        // Slight compression during impact
+                        currentModel.scale.y = originalScale.y * (1 - Math.random() * 0.05);
+                        
+                        shakeCount++;
+                        if (shakeCount > 100) { // Stop shaking after a duration
+                            clearInterval(shakeInterval);
+                            currentModel.position.copy(originalPosition);
+                            currentModel.scale.copy(originalScale); // Reset scale for final damage
+                        }
+                    }, 20);
+                    break;
+                    
+                case 'tension':
+                    // Stretch effect
+                    let stretchProgress = 0;
+                    const stretchInterval = setInterval(() => {
+                        stretchProgress += 0.01;
+                        currentModel.scale.x = originalScale.x * (1 + stretchProgress * 0.5); // Stretch more in X
+                        currentModel.scale.y = originalScale.y * (1 - stretchProgress * 0.2);
+                        currentModel.scale.z = originalScale.z * (1 - stretchProgress * 0.2);
+                        
+                        if (stretchProgress > 0.5) { // Stop stretching
+                            clearInterval(stretchInterval);
+                            currentModel.scale.copy(originalScale); // Reset for final damage
+                        }
+                    }, 30);
+                    break;
+                    
+                case 'thermal':
+                    // Color change effect (heating/cooling)
+                    let heatProgress = 0;
+                    const heatInterval = setInterval(() => {
+                        heatProgress += 0.02;
+                        const heatColor = new THREE.Color().lerpColors(
+                            new THREE.Color(baseColorForEffects), // Use base color for effects
+                            new THREE.Color(0xff4500), // Orange-red for heat
+                            Math.sin(heatProgress * Math.PI * 4) * 0.5 + 0.5
+                        );
+                        currentModel.material.color.copy(heatColor);
+                        
+                        if (heatProgress > 2) { // Stop heating effect
+                            clearInterval(heatInterval);
+                            currentModel.material.color.setHex(baseColorForEffects); // Reset for final damage
+                        }
+                    }, 50);
+                    break;
+
+                case 'pressure':
+                    // Subtle pulsating effect
+                    let pulseProgress = 0;
+                    const pulseInterval = setInterval(() => {
+                        pulseProgress += 0.05;
+                        const scaleFactor = 1 + Math.sin(pulseProgress) * 0.02; // Small pulse
+                        currentModel.scale.set(originalScale.x * scaleFactor, originalScale.y * scaleFactor, originalScale.z * scaleFactor);
+                        if (pulseProgress > Math.PI * 4) { // A few pulses
+                            clearInterval(pulseInterval);
+                            currentModel.scale.copy(originalScale); // Reset for final damage
+                        }
+                    }, 50);
+                    break;
+
+                case 'compression':
+                    // Gradual compression
+                    let compressProgress = 0;
+                    const compressInterval = setInterval(() => {
+                        compressProgress += 0.01;
+                        currentModel.scale.y = originalScale.y * (1 - compressProgress * 0.5); // Compress along Y
+                        currentModel.scale.x = originalScale.x * (1 + compressProgress * 0.2); // Expand slightly in X and Z
+                        currentModel.scale.z = originalScale.z * (1 + compressProgress * 0.2);
+                        if (compressProgress > 0.5) { // Max compression
+                            clearInterval(compressInterval);
+                            currentModel.scale.copy(originalScale); // Reset for final damage
+                        }
+                    }, 30);
+                    break;
+
+                case 'fatigue':
+                    // Subtle vibration and color fade
+                    let fatigueProgress = 0;
+                    const fatigueInterval = setInterval(() => {
+                        fatigueProgress += 0.01;
+                        currentModel.position.x = originalPosition.x + (Math.random() - 0.5) * 0.02; // Small vibration
+                        currentModel.material.opacity = 0.8 - (fatigueProgress * 0.2); // Fade out slightly
+                        if (fatigueProgress > 1) { // After some time
+                            clearInterval(fatigueInterval);
+                            currentModel.position.copy(originalPosition);
+                            currentModel.material.opacity = 0.8; // Reset for final damage
+                        }
+                    }, 40);
+                    break;
+
+                case 'vibration':
+                    // Continuous small vibration
+                    let vibProgress = 0;
+                    const vibInterval = setInterval(() => {
+                        vibProgress += 0.1;
+                        currentModel.position.x = originalPosition.x + Math.sin(vibProgress * 5) * 0.05;
+                        currentModel.position.y = originalPosition.y + Math.cos(vibProgress * 7) * 0.05;
+                        if (vibProgress > 5) { // After some time
+                            clearInterval(vibInterval);
+                            currentModel.position.copy(originalPosition);
+                        }
+                    }, 20);
+                    break;
+
+                case 'torsion':
+                    // Twisting effect
+                    let twistProgress = 0;
+                    const twistInterval = setInterval(() => {
+                        twistProgress += 0.02;
+                        currentModel.rotation.y = twistProgress * 2; // Twist around Y-axis
+                        if (twistProgress > Math.PI * 2) { // One full twist
+                            clearInterval(twistInterval);
+                            currentModel.rotation.y = 0; // Reset for final damage
+                        }
+                    }, 30);
+                    break;
+
+                case 'creep':
+                    // Slow, continuous deformation
+                    let creepProgress = 0;
+                    const creepInterval = setInterval(() => {
+                        creepProgress += 0.001; // Very slow
+                        currentModel.scale.y = originalScale.y * (1 - creepProgress * 0.1); // Slowly compress
+                        currentModel.scale.x = originalScale.x * (1 + creepProgress * 0.05);
+                        currentModel.scale.z = originalScale.z * (1 + creepProgress * 0.05);
+                        if (creepProgress > 1) { // Significant creep
+                            clearInterval(creepInterval);
+                            currentModel.scale.copy(originalScale); // Reset for final damage
+                        }
+                    }, 100); // Slower interval
+                    break;
+
+                case 'corrosion':
+                    // Color change to rusty/degraded look
+                    let corrodeProgress = 0;
+                    const corrodeInterval = setInterval(() => {
+                        corrodeProgress += 0.05;
+                        const corrodeColor = new THREE.Color().lerpColors(
+                            new THREE.Color(baseColorForEffects), // Use base color for effects
+                            new THREE.Color(0x8B4513), // SaddleBrown for rust
+                            corrodeProgress
+                        );
+                        currentModel.material.color.copy(corrodeColor);
+                        if (corrodeProgress > 1) {
+                            clearInterval(corrodeInterval);
+                            currentModel.material.color.setHex(baseColorForEffects); // Reset for final damage
+                        }
+                    }, 50);
+                    break;
+                case 'fea':
+                case 'cfd':
+                case 'topology':
+                    // For advanced simulations, damage might be more subtle or represented differently
+                    damageColor = 0x800000; // Dark red for simulation-indicated failure
+                    numCracks = 0; // No physical cracks, just conceptual failure
+                    if (currentModel) {
+                        currentModel.material.color.setHex(damageColor);
+                        currentModel.material.opacity = 0.7;
+                    }
+                    break;
+            }
+        }
+
+        function completeTest(testType, button) {
+            isTestRunning = false;
+            if (button) button.classList.remove('active');
+            hideProgress();
+            
+            // Reset model color to original after test (unless damage is applied)
+            // Use the color from the current material preset or custom color picker
+            const currentMaterialPreset = document.getElementById('materialPreset').value;
+            let baseColorAfterTest = 0x3498db; // Default fallback
+            if (currentMaterialPreset === 'custom') {
+                baseColorAfterTest = parseInt(document.getElementById('modelColorPicker').value.replace('#', '0x'));
+            } else if (materialColors[currentMaterialPreset]) {
+                baseColorAfterTest = materialColors[currentMaterialPreset];
+            }
+            if (currentModel && currentModel.material) {
+                currentModel.material.color.setHex(baseColorAfterTest);
+                currentModel.material.opacity = 0.8;
+            }
+
+            // Generate test results (simulated for now, would come from physics engine)
+            const force = parseFloat(document.getElementById('param1').value);
+            const speed = parseFloat(document.getElementById('param2').value);
+            const tensileStrength = parseFloat(document.getElementById('tensileStrength').value);
+            const density = parseFloat(document.getElementById('density').value);
+            const elasticity = parseFloat(document.getElementById('elasticity').value);
+            const yieldStrength = parseFloat(document.getElementById('yieldStrength').value);
+            const temperature = parseFloat(document.getElementById('param4').value);
+            const humidity = parseFloat(document.getElementById('param6').value);
+
+            const peakForce = force * (1 + Math.random() * 0.5); // Simulate some variation
+            const maxDeformation = (peakForce / tensileStrength) * 0.1 * (1 + Math.random() * 0.2); // Simplified deformation
+            const energyAbsorbed = peakForce * maxDeformation * 10; // Simplified energy
+
+            let testPassed = true;
+            let detailedResults = '';
+
+            switch (testType) {
+                case 'crash':
+                case 'impact':
+                case 'tension':
+                case 'compression':
+                case 'fatigue':
+                case 'thermal':
+                case 'pressure':
+                case 'vibration':
+                case 'torsion':
+                case 'creep':
+                case 'corrosion':
+                    testPassed = peakForce < tensileStrength * 1.5; // Simplified pass/fail threshold
+                    break;
+                case 'fea':
+                    const maxStress = (peakForce / (currentModel.geometry.attributes.position.count / 100)).toFixed(2); // Very simplified
+                    const displacement = (maxDeformation * 0.5).toFixed(3);
+                    testPassed = parseFloat(maxStress) < tensileStrength * 0.9; // Pass if stress is below 90% tensile
+                    detailedResults = `
+                        <div>• Max Stress: ${maxStress} MPa</div>
+                        <div>• Max Displacement: ${displacement} units</div>
+                        <div>• Strain Energy: ${(energyAbsorbed * 0.1).toFixed(2)} J</div>
+                    `;
+                    break;
+                case 'cfd':
+                    const avgVelocity = (speed * 0.8).toFixed(2);
+                    const pressureDrop = (force * 0.01).toFixed(2);
+                    testPassed = pressureDrop < 100; // Pass if pressure drop is low
+                    detailedResults = `
+                        <div>• Avg. Fluid Velocity: ${avgVelocity} m/s</div>
+                        <div>• Pressure Drop: ${pressureDrop} Pa</div>
+                        <div>• Flow Regime: Turbulent</div>
+                    `;
+                    break;
+                case 'topology':
+                    const materialReduction = (Math.random() * 20 + 10).toFixed(1); // 10-30% reduction
+                    const weightReduction = (density * materialReduction * 0.01).toFixed(2);
+                    testPassed = materialReduction > 15; // Pass if material reduction is significant
+                    detailedResults = `
+                        <div>• Material Reduction: ${materialReduction}%</div>
+                        <div>• Weight Reduction: ${weightReduction} kg</div>
+                        <div>• Optimized Structure: Lighter & Stronger</div>
+                    `;
+                    break;
+            }
+            
+            showNotification(
+                `${testType.charAt(0).toUpperCase() + testType.slice(1)} test completed! ${testPassed ? 'PASSED' : 'FAILED'}`,
+                testPassed ? 'success' : 'warning'
+            );
+
+            // Display detailed results
+            const simulationResultsDiv = document.getElementById('simulationResults');
+            const resultsContentDiv = document.getElementById('resultsContent');
+            simulationResultsDiv.style.display = 'block';
+            resultsContentDiv.innerHTML = `
+                <div>• Peak Force: ${peakForce.toFixed(2)} kN</div>
+                <div>• Max Deformation: ${maxDeformation.toFixed(3)} units</div>
+                <div>• Energy Absorbed: ${energyAbsorbed.toFixed(2)} J</div>
+                <div>• Status: <span style="color: ${testPassed ? '#27ae60' : '#e74c3c'}; font-weight: bold;">${testPassed ? 'Passed' : 'Failed'}</span></div>
+                ${detailedResults}
+            `;
+
+            // Store results for the final report
+            lastTestResults = {
+                testType: testType,
+                modelName: currentModel ? currentModel.userData.filename : 'N/A',
+                material: document.getElementById('materialPreset').value,
+                tensileStrength: tensileStrength,
+                density: density,
+                elasticity: elasticity,
+                yieldStrength: yieldStrength,
+                impactForce: force,
+                impactSpeed: speed,
+                loadDuration: parseFloat(document.getElementById('param3').value),
+                temperature: temperature,
+                humidity: humidity,
+                peakForce: peakForce,
+                maxDeformation: maxDeformation,
+                energyAbsorbed: energyAbsorbed,
+                status: testPassed ? 'Passed' : 'Failed',
+                detailedResults: detailedResults, // Store detailed results for report
+                timestamp: new Date().toLocaleString()
+            };
+
+            // Add visual damage if test failed
+            if (!testPassed) {
+                addDamageEffects(testType); // Pass testType to customize damage
+            } else {
+                // If test passed, reset model color to original
+                if (currentModel && currentModel.material) {
+                    currentModel.material.color.setHex(baseColorAfterTest);
+                    currentModel.material.opacity = 0.8;
+                }
+            }
+        }
+
+        function addDamageEffects(testType) {
+            const overlay = document.getElementById('damageOverlay');
+            
+            // Clear previous cracks
+            overlay.innerHTML = '';
+
+            // Customize damage based on test type
+            let damageColor = 0xe74c3c; // Default red for failure
+            let damageOpacity = 0.7;
+            let numCracks = 5;
+
+            switch(testType) {
+                case 'crash':
+                case 'impact':
+                    damageColor = 0x8B0000; // Dark Red for severe impact
+                    numCracks = 8;
+                    // Apply a permanent slight deformation
+                    if (currentModel) {
+                        currentModel.scale.y *= 0.9; // Permanent slight squash
+                        currentModel.scale.x *= 1.05;
+                        currentModel.scale.z *= 1.05;
+                    }
+                    break;
+                case 'tension':
+                    damageColor = 0xDC143C; // Crimson for tearing
+                    numCracks = 3; // Fewer, longer cracks
+                    if (currentModel) {
+                        currentModel.scale.y *= 1.1; // Permanent slight stretch
+                        currentModel.scale.x *= 0.95;
+                        currentModel.scale.z *= 0.95;
+                    }
+                    break;
+                case 'thermal':
+                    damageColor = 0x4B0082; // Indigo for heat damage/discoloration
+                    numCracks = 0; // No cracks, just discoloration
+                    if (currentModel) {
+                        currentModel.material.color.setHex(damageColor);
+                        currentModel.material.opacity = 0.6;
+                    }
+                    break;
+                case 'pressure':
+                    damageColor = 0x800080; // Purple for burst
+                    numCracks = 6; // Radial cracks
+                    if (currentModel) {
+                        currentModel.scale.set(currentModel.scale.x * 1.1, currentModel.scale.y * 0.9, currentModel.scale.z * 1.1); // Bulge and flatten
+                    }
+                    break;
+                case 'compression':
+                    damageColor = 0x696969; // Dim Gray for crushing
+                    numCracks = 2; // Large, irregular cracks
+                    if (currentModel) {
+                        currentModel.scale.y *= 0.8; // Significant squash
+                        currentModel.scale.x *= 1.1;
+                        currentModel.scale.z *= 1.1;
+                    }
+                    break;
+                case 'fatigue':
+                    damageColor = 0x556B2F; // Dark Olive Green for fatigue cracks
+                    numCracks = 10; // Many small, fine cracks
+                    break;
+                case 'torsion':
+                    damageColor = 0x8B4513; // Saddle Brown for twisting fracture
+                    numCracks = 4; // Spiral cracks
+                    if (currentModel) {
+                        currentModel.rotation.y += Math.PI / 4; // Permanent twist
+                    }
+                    break;
+                case 'creep':
+                    damageColor = 0x2F4F4F; // Dark Slate Gray for slow deformation
+                    numCracks = 0; // No cracks, just permanent sag
+                    if (currentModel) {
+                        currentModel.scale.y *= 0.9; // Permanent sag
+                    }
+                    break;
+                case 'corrosion':
+                    damageColor = 0xA0522D; // Sienna for rust/corrosion
+                    numCracks = 0; // No cracks, just surface degradation
+                    if (currentModel) {
+                        currentModel.material.color.setHex(damageColor);
+                        currentModel.material.opacity = 0.5;
+                    }
+                    break;
+                case 'fea':
+                case 'cfd':
+                case 'topology':
+                    // For advanced simulations, damage might be more subtle or represented differently
+                    damageColor = 0x800000; // Dark red for simulation-indicated failure
+                    numCracks = 0; // No physical cracks, just conceptual failure
+                    if (currentModel) {
+                        currentModel.material.color.setHex(damageColor);
+                        currentModel.material.opacity = 0.7;
+                    }
+                    break;
+            }
+
+            // Apply cracks if applicable
+            if (numCracks > 0) {
+                for (let i = 0; i < numCracks; i++) {
+                    const crack = document.createElement('div');
+                    crack.className = 'crack-line';
+                    crack.style.left = Math.random() * 80 + 10 + '%';
+                    crack.style.top = Math.random() * 80 + 10 + '%';
+                    crack.style.width = Math.random() * 200 + 50 + 'px';
+                    crack.style.transform = `rotate(${Math.random() * 360}deg)`;
+                    crack.style.animationDelay = i * 0.1 + 's';
+                    crack.style.background = `#${damageColor.toString(16)}`; // Set crack color
+                    crack.style.boxShadow = `0 0 10px #${damageColor.toString(16)}`;
+                    
+                    overlay.appendChild(crack);
+                    
+                    // Remove crack after animation
+                    setTimeout(() => {
+                        if (crack.parentNode) {
+                            crack.parentNode.removeChild(crack);
+                        }
+                    }, 3000 + i * 100);
+                }
+            }
+
+            // Apply final damage color to model if not already done by specific test
+            if (currentModel && currentModel.material && testType !== 'thermal' && testType !== 'corrosion' && testType !== 'fea' && testType !== 'cfd' && testType !== 'topology') {
+                currentModel.material.color.setHex(damageColor);
+                currentModel.material.opacity = damageOpacity;
+            }
+        }
+
+        function generateFinalReport() {
+            const reportContentDiv = document.getElementById('finalTestReportContent');
+            if (!lastTestResults) {
+                reportContentDiv.innerHTML = '<p>No test results available to generate a report. Please run a destructive test first.</p>';
+                showNotification('No test results to report.', 'warning');
+                return;
+            }
+
+            const results = lastTestResults;
+            reportContentDiv.innerHTML = `
+                <h4>Test Report for ${results.modelName}</h4>
+                <p><strong>Test Type:</strong> ${results.testType.charAt(0).toUpperCase() + results.testType.slice(1)}</p>
+                <p><strong>Date & Time:</strong> ${results.timestamp}</p>
+                <hr>
+                <h4>Material Properties:</h4>
+                <p><strong>Material Preset:</strong> ${results.material.replace('_', ' ').toUpperCase()}</p>
+                <p><strong>Tensile Strength:</strong> ${results.tensileStrength} MPa</p>
+                <p><strong>Yield Strength:</strong> ${results.yieldStrength} MPa</p>
+                <p><strong>Density:</strong> ${results.density} g/cm³</p>
+                <p><strong>Young's Modulus:</strong> ${results.elasticity} GPa</p>
+                <hr>
+                <h4>Test Parameters:</h4>
+                <p><strong>Impact Force:</strong> ${results.impactForce} kN</p>
+                <p><strong>Impact Speed:</strong> ${results.impactSpeed} km/h</p>
+                <p><strong>Load Duration:</strong> ${results.loadDuration} s</p>
+                <p><strong>Temperature:</strong> ${results.temperature} °C</p>
+                <p><strong>Humidity:</strong> ${results.humidity} %</p>
+                <hr>
+                <h4>Simulation Outcomes:</h4>
+                <p><strong>Peak Force Applied:</strong> ${results.peakForce.toFixed(2)} kN</p>
+                <p><strong>Maximum Deformation:</strong> ${results.maxDeformation.toFixed(3)} units</p>
+                <p><strong>Energy Absorbed:</strong> ${results.energyAbsorbed.toFixed(2)} J</p>
+                ${results.detailedResults || ''} <!-- Include detailed results if available -->
+                <p><strong>Overall Status:</strong> <span style="color: ${results.status === 'Passed' ? '#00FF00' : '#FF4500'}; font-weight: bold;">${results.status.toUpperCase()}</span></p>
+                <p><em>This report is based on simulated data.</em></p>
+            `;
+            showNotification('Final Test Report Generated!', 'success');
+        }
+
+        // Function to handle 2D plane selection
+        function selectSketchPlane(plane, element) {
+            // Remove active class from all plane buttons
+            document.querySelectorAll('.sketch-planes button').forEach(btn => {
+                btn.classList.remove('active-plane');
+            });
+            // Add active class to the selected plane button
+            element.classList.add('active-plane');
+            currentSketchPlane = plane; // Set the current sketch plane
+            isSketchingMode = true; // NEW: Enable sketching mode
+            showNotification(`Selected ${plane} plane for sketching.`, 'info');
+
+            // MODIFIED: Hide all grid helpers first
+            gridHelperXZ.visible = false;
+            gridHelperXY.visible = false;
+            gridHelperYZ.visible = false;
+
+            // Orient camera to selected plane and show corresponding grid
+            switch(plane) {
+                case 'front':
+                    camera.position.set(0, 0, 10);
+                    camera.up.set(0, 1, 0);
+                    gridHelperXY.visible = true; // Show XY plane grid
+                    break;
+                case 'top':
+                    camera.position.set(0, 10, 0);
+                    camera.up.set(0, 0, -1);
+                    gridHelperXZ.visible = true; // Show XZ plane grid
+                    break;
+                case 'right':
+                    camera.position.set(10, 0, 0);
+                    camera.up.set(0, 1, 0);
+                    gridHelperYZ.visible = true; // Show YZ plane grid
+                    break;
+            }
+            camera.lookAt(0, 0, 0);
+            resetSketching(); // Reset any ongoing drawing
+            updateDashedLines(); // NEW: Show dashed lines
+        }
+
+        // Functions for 2D sketch tools
+        function selectDrawingTool(tool) {
+            // NEW: Enforce plane selection for sketching tools
+            if (!currentSketchPlane && tool !== 'smart_dimension') { // Smart dimension can work in 3D too
+                showNotification('Please select a sketch plane first!', 'warning');
+                return;
+            }
+            drawingMode = tool;
+            sketchPoints = []; // Clear previous points for new drawing
+            showNotification(`${tool.replace('_', ' ').charAt(0).toUpperCase() + tool.replace('_', ' ').slice(1)} tool selected. Click on the viewport to draw.`, 'info');
+            
+            // Remove previous event listener to prevent multiple handlers
+            document.getElementById('threeCanvas').removeEventListener('click', handleSketchClick);
+            document.getElementById('threeCanvas').addEventListener('click', handleSketchClick);
+
+            // Listen for Escape key to stop continuous drawing
+            if (tool === 'line' || tool === 'symmetric_line' || tool === 'spline') {
+                document.addEventListener('keydown', handleEscapeKey);
+            } else {
+                document.removeEventListener('keydown', handleEscapeKey);
+            }
+        }
+
+        function handleEscapeKey(event) {
+            if (event.key === 'Escape') {
+                showNotification('Drawing mode cancelled.', 'info');
+                resetSketching();
+                document.removeEventListener('keydown', handleEscapeKey);
+            }
+        }
+
+        function handleSketchClick(event) {
+            if (!drawingMode) {
+                return; // Do nothing if no tool selected
+            }
+
+            // Convert mouse click to 3D point
+            const rect = document.getElementById('threeCanvas').getBoundingClientRect();
+            const mouse = new THREE.Vector2();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+
+            let intersectionPoint = new THREE.Vector3();
+            let targetObject = null;
+
+            if (drawingMode === 'smart_dimension') {
+                const intersects = raycaster.intersectObjects(scene.children, true);
+                if (intersects.length > 0) {
+                    intersectionPoint = intersects[0].point;
+                    targetObject = intersects[0].object;
+                } else {
+                    showNotification('Click on a model or a drawn sketch to dimension.', 'warning');
+                    return;
+                }
+            } else {
+                // For 2D drawing, intersect with the selected plane
+                let planeNormal;
+                let planeConstant = 0; // Assuming origin is at 0,0,0 for simplicity
+                if (currentSketchPlane === 'front') planeNormal = new THREE.Vector3(0, 0, 1);
+                else if (currentSketchPlane === 'top') planeNormal = new THREE.Vector3(0, 1, 0);
+                else if (currentSketchPlane === 'right') planeNormal = new THREE.Vector3(1, 0, 0);
+
+                const plane = new THREE.Plane(planeNormal, planeConstant);
+                raycaster.ray.intersectPlane(plane, intersectionPoint);
+
+                if (!intersectionPoint) {
+                    showNotification('Could not find intersection point on the selected plane.', 'warning');
+                    return;
+                }
+            }
+
+            sketchPoints.push(intersectionPoint);
+
+            // Visual feedback for points
+            const pointGeometry = new THREE.SphereGeometry(0.05, 16, 16);
+            const pointMaterial = new THREE.MeshBasicMaterial({ color: 0xff00ff });
+            const pointMesh = new THREE.Mesh(pointGeometry, pointMaterial);
+            pointMesh.position.copy(intersectionPoint);
+            scene.add(pointMesh);
+            dimensionObjects.push({text: null, line: null, point: pointMesh}); // Track temporary points
+
+            if (drawingMode === 'line') {
+                if (sketchPoints.length >= 2) {
+                    const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+                    const geometry = new THREE.BufferGeometry().setFromPoints([sketchPoints[sketchPoints.length - 2], sketchPoints[sketchPoints.length - 1]]);
+                    const line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                    sketchObjects.push(line); // Store sketch object
+                    showNotification('Line segment drawn. Press Escape to finish.', 'success');
+                }
+            } else if (drawingMode === 'symmetric_line') {
+                if (!currentSymmetryAxis) {
+                    showNotification('Please select a symmetry axis (X, Y, or Z) first!', 'warning');
+                    resetSketching();
+                    return;
+                }
+                if (sketchPoints.length >= 2) {
+                    const p1 = sketchPoints[sketchPoints.length - 2];
+                    const p2 = sketchPoints[sketchPoints.length - 1];
+
+                    const material = new THREE.LineBasicMaterial({ color: 0xff0000 });
+                    const geometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+                    const line = new THREE.Line(geometry, material);
+                    scene.add(line);
+                    sketchObjects.push(line); // Store sketch object
+
+                    // Create symmetric line
+                    const p1_sym = p1.clone();
+                    const p2_sym = p2.clone();
+                    if (currentSymmetryAxis === 'x') {
+                        p1_sym.x *= -1; p2_sym.x *= -1;
+                    } else if (currentSymmetryAxis === 'y') {
+                        p1_sym.y *= -1; p2_sym.y *= -1;
+                    } else if (currentSymmetryAxis === 'z') {
+                        p1_sym.z *= -1; p2_sym.z *= -1;
+                    }
+                    const sym_geometry = new THREE.BufferGeometry().setFromPoints([p1_sym, p2_sym]);
+                    const sym_line = new THREE.Line(sym_geometry, material);
+                    sym_line.position.copy(p1); // Adjust position to be relative to p1
+                    scene.add(sym_line);
+                    sketchObjects.push(sym_line); // Store symmetric sketch object
+                    showNotification('Symmetric line segment drawn. Press Escape to finish.', 'success');
+                }
+            } else if (drawingMode === 'circle' && sketchPoints.length === 2) {
+                const center = sketchPoints[0];
+                const radius = center.distanceTo(sketchPoints[1]);
+                
+                const circleGeometry = new THREE.CircleGeometry(radius, 64);
+                const circleMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+                const circle = new THREE.Mesh(circleGeometry, circleMaterial);
+                circle.position.copy(center);
+                
+                // Orient circle to the selected plane
+                if (currentSketchPlane === 'front') circle.rotation.y = Math.PI / 2; // Rotate to face front
+                else if (currentSketchPlane === 'top') circle.rotation.x = Math.PI / 2; // Rotate to face top
+
+                scene.add(circle);
+                sketchObjects.push(circle); // Store sketch object
+                showNotification('Circle drawn.', 'success');
+                resetSketching();
+            } else if (drawingMode === 'rectangle' && sketchPoints.length === 2) {
+                const p1 = sketchPoints[0];
+                const p2 = sketchPoints[1];
+
+                const rectShape = new THREE.Shape();
+                rectShape.moveTo(p1.x, p1.y);
+                rectShape.lineTo(p2.x, p1.y);
+                rectShape.lineTo(p2.x, p2.y);
+                rectShape.lineTo(p1.x, p2.y);
+                rectShape.lineTo(p1.x, p1.y);
+
+                const rectGeometry = new THREE.ShapeGeometry(rectShape);
+                const rectMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+                const rectangle = new THREE.Mesh(rectGeometry, rectMaterial);
+                
+                // Position and orient rectangle based on plane
+                rectangle.position.copy(p1); // Adjust position to be relative to p1
+                if (currentSketchPlane === 'front') {
+                    rectangle.rotation.y = Math.PI / 2;
+                    rectangle.position.z = p1.z; // Ensure it's on the correct Z for front plane
+                } else if (currentSketchPlane === 'top') {
+                    rectangle.rotation.x = Math.PI / 2;
+                    rectangle.position.y = p1.y; // Ensure it's on the correct Y for top plane
+                } else if (currentSketchPlane === 'right') {
+                    rectangle.position.x = p1.x; // Ensure it's on the correct X for right plane
+                }
+
+                scene.add(rectangle);
+                sketchObjects.push(rectangle); // Store sketch object
+                showNotification('Rectangle drawn.', 'success');
+                resetSketching();
+            } else if (drawingMode === 'arc' && sketchPoints.length === 3) {
+                const startPoint = sketchPoints[0];
+                const midPoint = sketchPoints[1]; // Point on the arc
+                const endPoint = sketchPoints[2];
+
+                // Simplified arc: just draw lines between points for now
+                const material = new THREE.LineBasicMaterial({ color: 0x00ffff });
+                const geometry = new THREE.BufferGeometry().setFromPoints([startPoint, midPoint, endPoint]);
+                const arcLine = new THREE.Line(geometry, material);
+                scene.add(arcLine);
+                sketchObjects.push(arcLine); // Store sketch object
+                showNotification('Arc drawn (simplified as line segments).', 'success');
+                resetSketching();
+            } else if (drawingMode === 'spline' && sketchPoints.length >= 2) {
+                // For spline, keep adding points until Escape is pressed
+                if (sketchPoints.length >= 2) {
+                    const material = new THREE.LineBasicMaterial({ color: 0xffa500 });
+                    const geometry = new THREE.BufferGeometry().setFromPoints(sketchPoints);
+                    const spline = new THREE.Line(geometry, material);
+                    scene.add(spline);
+                    sketchObjects.push(spline); // Store sketch object
+                    showNotification('Spline segment added. Press Escape to finish.', 'success');
+                }
+            } else if (drawingMode === 'smart_dimension') {
+                if (sketchPoints.length === 2) {
+                    // Dimension between two points
+                    const p1 = sketchPoints[0];
+                    const p2 = sketchPoints[1];
+                    const distance = p1.distanceTo(p2);
+                    const midPoint = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+
+                    const dimText = `${distance.toFixed(2)} units`;
+                    const textSprite = createTextSprite(dimText, 0xffffff, 0x000000);
+                    textSprite.position.copy(midPoint);
+                    textSprite.scale.set(0.5, 0.25, 1); // Adjust size
+                    scene.add(textSprite);
+
+                    // Draw dimension line
+                    const dimLineMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00 });
+                    const dimLineGeometry = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+                    const dimLine = new THREE.Line(dimLineGeometry, dimLineMaterial);
+                    scene.add(dimLine);
+
+                    dimensionObjects.push({text: textSprite, line: dimLine});
+                    showNotification(`Dimension: ${dimText}`, 'success');
+                    resetSketching();
+                } else if (sketchPoints.length === 1 && targetObject) {
+                    // Dimension of an edge or object property
+                    if (targetObject.isMesh && targetObject.geometry && targetObject.geometry.attributes.position) {
+                        // Try to find closest edge for length
+                        const positions = targetObject.geometry.attributes.position.array;
+                        let minDistance = Infinity;
+                        let closestEdge = null;
+
+                        // This is a very simplified edge detection. A real CAD would use topology.
+                        for (let i = 0; i < positions.length; i += 3) {
+                            const v = new THREE.Vector3(positions[i], positions[i+1], positions[i+2]);
+                            const dist = v.distanceTo(intersectionPoint);
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                // Store vertex index or similar to find connected edge
+                            }
+                        }
+                        // For now, just show object size if clicked on object
+                        const box = new THREE.Box3().setFromObject(targetObject);
+                        const size = box.getSize(new THREE.Vector3());
+                        const dimText = `Object Size: ${size.x.toFixed(2)}x${size.y.toFixed(2)}x${size.z.toFixed(2)}`;
+                        const textSprite = createTextSprite(dimText, 0xffffff, 0x000000);
+                        textSprite.position.copy(intersectionPoint);
+                        textSprite.scale.set(0.8, 0.4, 1);
+                        scene.add(textSprite);
+                        dimensionObjects.push({text: textSprite, line: null});
+                        showNotification(`Dimension: ${dimText}`, 'success');
+                        resetSketching();
+                    } else if (targetObject.isLine) {
+                        // Dimension of a line segment
+                        const linePoints = targetObject.geometry.attributes.position.array;
+                        if (linePoints.length >= 6) { // At least two points (x,y,z, x,y,z)
+                            const p1 = new THREE.Vector3(linePoints[0], linePoints[1], linePoints[2]);
+                            const p2 = new THREE.Vector3(linePoints[3], linePoints[4], linePoints[5]);
+                            const distance = p1.distanceTo(p2);
+                            const dimText = `Line Length: ${distance.toFixed(2)} units`;
+                            const textSprite = createTextSprite(dimText, 0xffffff, 0x000000);
+                            const midPoint = new THREE.Vector3().addVectors(p1, p2).multiplyScalar(0.5);
+                            textSprite.position.copy(midPoint);
+                            textSprite.scale.set(0.5, 0.25, 1);
+                            scene.add(textSprite);
+                            dimensionObjects.push({text: textSprite, line: null});
+                            showNotification(`Dimension: ${dimText}`, 'success');
+                            resetSketching();
+                        }
+                    } else {
+                        showNotification('Cannot dimension this element.', 'warning');
+                        resetSketching();
+                    }
+                }
+            }
+        }
+
+        function createTextSprite(message, textColor, bgColor) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const font = 'Bold 40px Arial';
+            context.font = font;
+            const metrics = context.measureText(message);
+            const textWidth = metrics.width;
+            const textHeight = 40;
+
+            canvas.width = textWidth + 20;
+            canvas.height = textHeight + 20;
+
+            context.font = font;
+            context.fillStyle = `rgba(${bgColor >> 16 & 0xFF}, ${bgColor >> 8 & 0xFF}, ${bgColor & 0xFF}, 0.7)`;
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.strokeStyle = `rgb(${textColor >> 16 & 0xFF}, ${textColor >> 8 & 0xFF}, ${textColor & 0xFF})`;
+            context.lineWidth = 2;
+            context.strokeRect(0, 0, canvas.width, canvas.height);
+
+            context.fillStyle = `rgb(${textColor >> 16 & 0xFF}, ${textColor >> 8 & 0xFF}, ${textColor & 0xFF})`;
+            context.fillText(message, 10, textHeight - 5);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            return sprite;
+        }
+
+
+        function resetSketching() {
+            sketchPoints = [];
+            drawingMode = null;
+            document.getElementById('threeCanvas').removeEventListener('click', handleSketchClick);
+            document.removeEventListener('keydown', handleEscapeKey); // Ensure escape listener is removed
+            isSketchingMode = false; // NEW: Disable sketching mode
+            clearDashedLines(); // NEW: Clear dashed lines
+
+            // Remove temporary point meshes
+            scene.children = scene.children.filter(obj => !(obj.geometry && obj.geometry.type === 'SphereGeometry' && obj.material && obj.material.color.getHex() === 0xff00ff));
+            
+            // Clear temporary dimension objects (points used for selection)
+            dimensionObjects.forEach(dim => {
+                if (dim.point && dim.point.parent) dim.point.parent.remove(dim.point);
+            });
+            dimensionObjects = dimensionObjects.filter(dim => dim.text || dim.line); // Keep actual dimensions
+        }
+
+        // NEW: Function to update and display dashed lines
+        function updateDashedLines() {
+            clearDashedLines(); // Clear existing lines first
+
+            if (!currentSketchPlane) return;
+
+            const material = new THREE.LineDashedMaterial({
+                color: 0x00ff00, // Green dashed lines
+                linewidth: 1,
+                scale: 1,
+                dashSize: 0.2,
+                gapSize: 0.1,
+            });
+
+            const lineLength = 100; // Arbitrary length for the dashed lines
+
+            // Create lines perpendicular to the selected plane
+            if (currentSketchPlane === 'front') { // XY plane
+                // Vertical line (along Y-axis)
+                const pointsY = [];
+                pointsY.push(new THREE.Vector3(0, -lineLength / 2, 0));
+                pointsY.push(new THREE.Vector3(0, lineLength / 2, 0));
+                const geometryY = new THREE.BufferGeometry().setFromPoints(pointsY);
+                const lineY = new THREE.Line(geometryY, material);
+                lineY.computeLineDistances();
+                scene.add(lineY);
+                dashedLines.push(lineY);
+
+                // Horizontal line (along X-axis)
+                const pointsX = [];
+                pointsX.push(new THREE.Vector3(-lineLength / 2, 0, 0));
+                pointsX.push(new THREE.Vector3(lineLength / 2, 0, 0));
+                const geometryX = new THREE.BufferGeometry().setFromPoints(pointsX);
+                const lineX = new THREE.Line(geometryX, material);
+                lineX.computeLineDistances();
+                scene.add(lineX);
+                dashedLines.push(lineX);
+
+            } else if (currentSketchPlane === 'top') { // XZ plane
+                // Line along X-axis
+                const pointsX = [];
+                pointsX.push(new THREE.Vector3(-lineLength / 2, 0, 0));
+                pointsX.push(new THREE.Vector3(lineLength / 2, 0, 0));
+                const geometryX = new THREE.BufferGeometry().setFromPoints(pointsX);
+                const lineX = new THREE.Line(geometryX, material);
+                lineX.computeLineDistances();
+                scene.add(lineX);
+                dashedLines.push(lineX);
+
+                // Line along Z-axis
+                const pointsZ = [];
+                pointsZ.push(new THREE.Vector3(0, 0, -lineLength / 2));
+                pointsZ.push(new THREE.Vector3(0, 0, lineLength / 2));
+                const geometryZ = new THREE.BufferGeometry().setFromPoints(pointsZ);
+                const lineZ = new THREE.Line(geometryZ, material);
+                lineZ.computeLineDistances();
+                scene.add(lineZ);
+                dashedLines.push(lineZ);
+
+            } else if (currentSketchPlane === 'right') { // YZ plane
+                // Line along Y-axis
+                const pointsY = [];
+                pointsY.push(new THREE.Vector3(0, -lineLength / 2, 0));
+                pointsY.push(new THREE.Vector3(0, lineLength / 2, 0));
+                const geometryY = new THREE.BufferGeometry().setFromPoints(pointsY);
+                const lineY = new THREE.Line(geometryY, material);
+                lineY.computeLineDistances();
+                scene.add(lineY);
+                dashedLines.push(lineY);
+
+                // Line along Z-axis
+                const pointsZ = [];
+                pointsZ.push(new THREE.Vector3(0, 0, -lineLength / 2));
+                pointsZ.push(new THREE.Vector3(0, 0, lineLength / 2));
+                const geometryZ = new THREE.BufferGeometry().setFromPoints(pointsZ);
+                const lineZ = new THREE.Line(geometryZ, material);
+                lineZ.computeLineDistances();
+                scene.add(lineZ);
+                dashedLines.push(lineZ);
+            }
+        }
+
+        // NEW: Function to clear dashed lines
+        function clearDashedLines() {
+            dashedLines.forEach(line => {
+                if (line.parent) {
+                    line.parent.remove(line);
+                    line.geometry.dispose();
+                    line.material.dispose();
+                }
+            });
+            dashedLines = [];
+        }
+
+        // Function to start 2D Sketch (placeholder)
+        function start2DSketch() {
+            showNotification('Starting 2D Sketch. Select a plane and then a tool to begin drawing.', 'info');
+            // This function primarily serves as a trigger for the user to select a plane and then a tool.
+        }
+
+        // Function for Extrude Boss (conceptual)
+        function extrudeBoss() {
+            if (!currentSketchPlane) {
+                showNotification('Please select a sketch plane before extruding!', 'warning');
+                return;
+            }
+            if (sketchObjects.length === 0) {
+                showNotification('No sketch found to extrude. Please draw a sketch first.', 'warning');
+                return;
+            }
+
+            const extrusionDepth = parseFloat(document.getElementById('extrusionDepth').value);
+            if (isNaN(extrusionDepth) || extrusionDepth <= 0) {
+                showNotification('Please enter a valid extrusion depth.', 'warning');
+                return;
+            }
+
+            let shape = null;
+            let sketchCenter = new THREE.Vector3();
+
+            // Attempt to find a closed sketch to extrude
+            const lastSketchObject = sketchObjects[sketchObjects.length - 1];
+
+            if (lastSketchObject && lastSketchObject.geometry && lastSketchObject.geometry.type === 'CircleGeometry') {
+                // Extrude a Circle
+                const radius = lastSketchObject.geometry.parameters.radius;
+                shape = new THREE.Shape();
+                shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+                sketchCenter.copy(lastSketchObject.position);
+
+            } else if (lastSketchObject && lastSketchObject.geometry && lastSketchObject.geometry.type === 'ShapeGeometry') {
+                // Extrude a Rectangle (which is drawn as a ShapeGeometry)
+                // The ShapeGeometry already contains the shape data
+                shape = lastSketchObject.geometry.shapes[0]; // Assuming the first shape is the one we want
+                sketchCenter.copy(lastSketchObject.position); // Position of the rectangle mesh
+
+            } else if (sketchPoints.length >= 3) {
+                // Attempt to extrude a polygon from sketchPoints (simplified)
+                // This assumes sketchPoints form a closed, non-self-intersecting polygon
+                shape = new THREE.Shape();
+                // Move to the first point (relative to the sketch's origin)
+                shape.moveTo(sketchPoints[0].x - sketchPoints[0].x, sketchPoints[0].y - sketchPoints[0].y);
+                // Add lines to subsequent points
+                for (let i = 1; i < sketchPoints.length; i++) {
+                    shape.lineTo(sketchPoints[i].x - sketchPoints[0].x, sketchPoints[i].y - sketchPoints[0].y);
+                }
+                // Close the shape (lineTo the first point)
+                shape.lineTo(sketchPoints[0].x - sketchPoints[0].x, sketchPoints[0].y - sketchPoints[0].y);
+                
+                sketchCenter.copy(sketchPoints[0]); // Use the first point as a reference for positioning
+            } else {
+                showNotification('Extrusion requires a closed 2D sketch (e.g., Circle, Rectangle, or a closed polygon drawn with lines).', 'warning');
+                return;
+            }
+
+            if (!shape) {
+                showNotification('Could not create a valid shape for extrusion.', 'warning');
+                return;
+            }
+
+            const extrudeSettings = {
+                steps: 1,
+                depth: extrusionDepth,
+                bevelEnabled: false // For simplicity, no bevel
+            };
+
+            const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x3498db,
+                shininess: 100,
+                transparent: true,
+                opacity: 0.8
+            });
+            const extrudedMesh = new THREE.Mesh(geometry, material);
+
+            // Position and orient the extruded mesh based on the sketch plane
+            if (currentSketchPlane === 'front') { // XY plane, extrude along Z
+                extrudedMesh.position.set(sketchCenter.x, sketchCenter.y, sketchCenter.z);
+            } else if (currentSketchPlane === 'top') { // XZ plane, extrude along Y
+                extrudedMesh.rotation.x = Math.PI / 2; // Rotate to align with XZ plane
+                extrudedMesh.position.set(sketchCenter.x, sketchCenter.y, sketchCenter.z);
+            } else if (currentSketchPlane === 'right') { // YZ plane, extrude along X
+                extrudedMesh.rotation.y = -Math.PI / 2; // Rotate to align with YZ plane
+                extrudedMesh.position.set(sketchCenter.x, sketchCenter.y, sketchCenter.z);
+            }
+
+            extrudedMesh.userData = { filename: `Extruded_${Date.now()}`, type: 'generated' };
+            scene.add(extrudedMesh);
+            loadedModels.push(extrudedMesh);
+            currentModel = extrudedMesh; // Set as current model for further operations
+            updateModelInfo(extrudedMesh);
+            showNotification(`Extruded Boss created with depth ${extrusionDepth}!`, 'success');
+
+            // Clear sketch items after extrusion
+            deleteSketchItems();
+        }
+
+        function extrudeCut() {
+            if (!currentSketchPlane) {
+                showNotification('Please select a sketch plane before extruding cut!', 'warning');
+                return;
+            }
+            if (sketchObjects.length === 0) {
+                showNotification('No sketch found to extrude cut. Please draw a sketch first.', 'warning');
+                return;
+            }
+            const extrusionDepth = parseFloat(document.getElementById('extrusionDepth').value);
+            if (isNaN(extrusionDepth) || extrusionDepth <= 0) {
+                showNotification('Please enter a valid extrusion depth.', 'warning');
+                return;
+            }
+
+            let shape = null;
+            let sketchCenter = new THREE.Vector3();
+
+            // Attempt to find a closed sketch to extrude
+            const lastSketchObject = sketchObjects[sketchObjects.length - 1];
+
+            if (lastSketchObject && lastSketchObject.geometry && lastSketchObject.geometry.type === 'CircleGeometry') {
+                // Extrude a Circle
+                const radius = lastSketchObject.geometry.parameters.radius;
+                shape = new THREE.Shape();
+                shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
+                sketchCenter.copy(lastSketchObject.position);
+
+            } else if (lastSketchObject && lastSketchObject.geometry && lastSketchObject.geometry.type === 'ShapeGeometry') {
+                // Extrude a Rectangle (which is drawn as a ShapeGeometry)
+                shape = lastSketchObject.geometry.shapes[0];
+                sketchCenter.copy(lastSketchObject.position);
+
+            } else if (sketchPoints.length >= 3) {
+                // Attempt to extrude a polygon from sketchPoints (simplified)
+                shape = new THREE.Shape();
+                shape.moveTo(sketchPoints[0].x - sketchPoints[0].x, sketchPoints[0].y - sketchPoints[0].y);
+                for (let i = 1; i < sketchPoints.length; i++) {
+                    shape.lineTo(sketchPoints[i].x - sketchPoints[0].x, sketchPoints[i].y - sketchPoints[0].y);
+                }
+                shape.lineTo(sketchPoints[0].x - sketchPoints[0].x, sketchPoints[0].y - sketchPoints[0].y);
+                
+                sketchCenter.copy(sketchPoints[0]);
+            } else {
+                showNotification('Extrusion cut requires a closed 2D sketch (e.g., Circle, Rectangle, or a closed polygon drawn with lines).', 'warning');
+                return;
+            }
+
+            if (!shape) {
+                showNotification('Could not create a valid shape for extrusion cut.', 'warning');
+                return;
+            }
+
+            const extrudeSettings = {
+                steps: 1,
+                depth: extrusionDepth,
+                bevelEnabled: false
+            };
+
+            const cutGeometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+            const cutMesh = new THREE.Mesh(cutGeometry); // Material doesn't matter much for CSG
+
+            // Position and orient the cut mesh based on the sketch plane
+            if (currentSketchPlane === 'front') { // XY plane, extrude along Z
+                cutMesh.position.set(sketchCenter.x, sketchCenter.y, sketchCenter.z);
+            } else if (currentSketchPlane === 'top') { // XZ plane, extrude along Y
+                cutMesh.rotation.x = Math.PI / 2;
+                cutMesh.position.set(sketchCenter.x, sketchCenter.y, sketchCenter.z);
+            } else if (currentSketchPlane === 'right') { // YZ plane, extrude along X
+                cutMesh.rotation.y = -Math.PI / 2;
+                cutMesh.position.set(sketchCenter.x, sketchCenter.y, sketchCenter.z);
+            }
+
+            // Perform boolean operation (conceptual, requires a library like ThreeCSG)
+            // For demonstration, we'll just show the cut shape in a different color
+            // In a real application, you'd use a CSG library to subtract `cutMesh` from `currentModel`
+            
+            if (currentModel) {
+                // This is a placeholder for actual CSG subtraction.
+                // A real implementation would involve:
+                // 1. Converting currentModel and cutMesh to CSG objects.
+                // 2. Performing the subtraction: currentModelCSG.subtract(cutMeshCSG).
+                // 3. Converting the result back to a Three.js Mesh.
+                // 4. Replacing the original currentModel with the new result.
+
+                // For now, we'll just add the "cut" shape as a transparent red object
+                // to visually represent where the cut would occur.
+                const cutVisualMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xff0000, // Red to indicate removal
+                    transparent: true,
+                    opacity: 0.4,
+                    side: THREE.DoubleSide
+                });
+                cutMesh.material = cutVisualMaterial;
+                scene.add(cutMesh);
+                // Add to loadedModels so it can be cleared later
+                cutMesh.userData = { filename: `CutVisual_${Date.now()}`, type: 'generated' };
+                loadedModels.push(cutMesh);
+
+                showNotification(`Extrusion Cut (visualized) created with depth ${extrusionDepth}!`, 'info');
+            } else {
+                showNotification('No existing 3D model to perform extrusion cut on. Please load or create a model first.', 'warning');
+            }
+
+            // Clear sketch items after operation
+            deleteSketchItems();
+        }
+
+
+        // Function for Fillet (conceptual)
+        function applyFillet() {
+            showNotification('Fillet functionality not fully implemented (conceptual).', 'info');
+        }
+
+        // Function for Mirror (conceptual)
+        function applyMirror() {
+            showNotification('Mirror functionality not fully implemented (conceptual).', 'info');
+        }
+
+        // Function to change model color
+        function changeModelColor(color) {
+            if (currentModel && currentModel.material) {
+                currentModel.material.color.set(color);
+                // When color is manually changed, set material preset to 'custom'
+                document.getElementById('materialPreset').value = 'custom';
+                showNotification(`Model color changed to ${color}`, 'info');
+            } else {
+                showNotification('No model selected to change color.', 'warning');
+            }
+        }
+
+        // Function to reset model color to default
+        function resetModelColor() {
+            const defaultColor = '#3498db'; // Default CAD color
+            document.getElementById('modelColorPicker').value = defaultColor;
+            changeModelColor(defaultColor);
+            showNotification('Model color reset to default.', 'info');
+        }
+
+        // Function to enter AR mode (conceptual)
+        function enterARMode() {
+            if ('xr' in navigator) {
+                navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+                    if (supported) {
+                        showNotification('WebXR AR supported. Entering AR mode...', 'info');
+                        // Placeholder for actual WebXR AR session setup
+                        // This would involve creating an XRSession, XRReferenceSpace, and rendering loop
+                        // For example: renderer.xr.enabled = true; renderer.setAnimationLoop(renderAR);
+                    } else {
+                        showNotification('WebXR AR not supported on this device/browser.', 'warning');
+                    }
+                });
+            } else {
+                showNotification('WebXR not available. Please use a compatible browser.', 'warning');
+            }
+        }
+
+        // Function to enter VR mode (conceptual)
+        function enterVRMode() {
+            if ('xr' in navigator) {
+                navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                    if (supported) {
+                        showNotification('WebXR VR supported. Entering VR mode...', 'info');
+                        // Placeholder for actual WebXR VR session setup
+                        // For example: renderer.xr.enabled = true; renderer.setAnimationLoop(renderVR);
+                    } else {
+                        showNotification('WebXR VR not supported on this device/browser.', 'warning');
+                    }
+                });
+            } else {
+                showNotification('WebXR not available. Please use a compatible browser.', 'warning');
+            }
+        }
+
+        // Function to activate 3D Annotation tool (conceptual)
+        function activate3DAnnotationTool() {
+            showNotification('3D Annotation tool activated. Click on the model to add an annotation.', 'info');
+            // Add event listener for clicks on the canvas
+            document.getElementById('threeCanvas').addEventListener('click', addAnnotationOnClick);
+        }
+
+        function addAnnotationOnClick(event) {
+            if (!currentModel) {
+                showNotification('No model to annotate.', 'warning');
+                return;
+            }
+
+            // Raycasting to find intersection point on the model
+            const rect = document.getElementById('threeCanvas').getBoundingClientRect();
+            const mouse = new THREE.Vector2();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+            const raycaster = new THREE.Raycaster();
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(scene.children, true);
+
+            if (intersects.length > 0) {
+                const intersect = intersects[0];
+                const point = intersect.point; // 3D point of intersection
+
+                // Prompt user for annotation text
+                const annotationText = prompt("Enter annotation text:");
+                if (annotationText) {
+                    // Create a simple 3D text label (using Sprite)
+                    const spriteMaterial = new THREE.SpriteMaterial({
+                        map: new THREE.CanvasTexture(generateTextCanvas(annotationText)),
+                        color: 0xffffff,
+                        transparent: true,
+                        opacity: 1
+                    });
+                    const annotationSprite = new THREE.Sprite(spriteMaterial);
+                    annotationSprite.position.copy(point);
+                    annotationSprite.scale.set(1, 0.5, 1); // Adjust size as needed
+                    scene.add(annotationSprite);
+
+                    // Store annotation data
+                    annotations.push({
+                        text: annotationText,
+                        position: point.clone(),
+                        model: currentModel.uuid, // Link to the model
+                        sprite: annotationSprite // Store reference to the sprite
+                    });
+
+                    showNotification(`Annotation "${annotationText}" added at (${point.x.toFixed(2)}, ${point.y.toFixed(2)}, ${point.z.toFixed(2)})`, 'success');
+                }
+            }
+            // Remove event listener after one annotation or if a dedicated "exit annotation mode" button is added
+            // document.getElementById('threeCanvas').removeEventListener('click', addAnnotationOnClick);
+        }
+
+        // Helper function to generate a canvas with text for Sprite
+        function generateTextCanvas(text) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const font = 'Bold 60px Arial';
+            context.font = font;
+            const metrics = context.measureText(text);
+            const textWidth = metrics.width;
+            const textHeight = 60; // Approximate font height
+
+            canvas.width = textWidth + 20; // Add padding
+            canvas.height = textHeight + 20; // Add padding
+
+            context.font = font;
+            context.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Background color for text
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.strokeStyle = '#ffffff'; // Border color
+            context.lineWidth = 2;
+            context.strokeRect(0, 0, canvas.width, canvas.height);
+
+            context.fillStyle = '#ffffff'; // Text color
+            context.fillText(text, 10, textHeight - 5); // Position text
+
+            return canvas;
+        }
+
+        function printFinalReport() {
+            const reportContent = document.getElementById('finalTestReportContent').innerHTML;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Test Report</title>
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; color: #333; }
+                        h4 { color: #008000; margin-bottom: 10px; }
+                        p { margin-bottom: 8px; line-height: 1.4; }
+                        strong { color: #006400; }
+                        hr { border: 0; border-top: 1px solid #ccc; margin: 15px 0; }
+                        .status-passed { color: #27ae60; font-weight: bold; }
+                        .status-failed { color: #e74c3c; font-weight: bold; }
+                        /* Hide buttons and other UI elements if any are accidentally included */
+                        button, .no-print { display: none !important; }
+                    </style>
+                </head>
+                <body>
+                    ${reportContent}
+                </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            printWindow.print();
+            printWindow.close();
+            showNotification('Report sent to printer.', 'success');
+        }
+
+        async function copyFinalReport() {
+            const reportContentDiv = document.getElementById('finalTestReportContent');
+            const textToCopy = reportContentDiv.innerText; // Get plain text content
+
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                showNotification('Report copied to clipboard!', 'success');
+            } catch (err) {
+                console.error('Failed to copy report: ', err);
+                showNotification('Failed to copy report. Please try again manually.', 'warning');
+            }
+        }
+
+        // Function to select symmetry axis
+        function selectSymmetryAxis(axis, element) {
+            document.querySelectorAll('.symmetry-axis-selection button').forEach(btn => {
+                btn.classList.remove('active-axis');
+            });
+            element.classList.add('active-axis');
+            currentSymmetryAxis = axis;
+            showNotification(`Symmetry axis set to ${axis.toUpperCase()}-Axis.`, 'info');
+        }
+
+        // Placeholder for startVirtualTest function
+        function startVirtualTest(testType) {
+            const virtualTestResultsDiv = document.getElementById('virtualTestResults');
+            const virtualTestContentDiv = document.getElementById('virtualTestContent');
+            virtualTestResultsDiv.style.display = 'block';
+
+            let message = '';
+            switch(testType) {
+                case 'interact3d':
+                    message = 'Enabling interactive 3D model manipulation...';
+                    break;
+                case 'digitalTwin':
+                    message = 'Modeling digital twin for real-time data integration...';
+                    break;
+                case 'sensorData':
+                    message = 'Integrating live sensor data streams...';
+                    break;
+                case 'collaborate':
+                    message = 'Setting up collaborative environment...';
+                    break;
+                default:
+                    message = 'Starting virtual test...';
+            }
+            virtualTestContentDiv.innerHTML = `<div class="loading-spinner"></div><p style="text-align: center; margin-top: 10px;">${message}</p>`;
+            showNotification(`Starting Virtual Test: ${testType}`, 'info');
+
+            // Simulate completion
+            setTimeout(() => {
+                virtualTestContentDiv.innerHTML = `Virtual Test: ${testType} completed. Status: Ready.`;
+                showNotification(`Virtual Test: ${testType} ready!`, 'success');
+            }, 2000);
+        }
+
+
+        // MODIFIED: Function to toggle the visibility of all grid planes
+        function togglePlanes() {
+            const arePlanesVisible = gridHelperXZ.visible || gridHelperXY.visible || gridHelperYZ.visible;
+            gridHelperXZ.visible = !arePlanesVisible;
+            gridHelperXY.visible = !arePlanesVisible; // Corrected typo: was arePlatesVisible
+            gridHelperYZ.visible = !arePlanesVisible;
+            showNotification(`Planes ${arePlanesVisible ? 'hidden' : 'shown'}.`, 'info');
+        }
+
+        // NEW: Function to delete all sketch items
+        function deleteSketchItems() {
+            // Remove all sketch objects from the scene
+            sketchObjects.forEach(obj => {
+                if (obj.parent) {
+                    obj.parent.remove(obj);
+                    obj.geometry.dispose();
+                    obj.material.dispose();
+                }
+            });
+            sketchObjects = []; // Clear the array
+
+            // Remove all dimension objects (text and lines)
+            dimensionObjects.forEach(dim => {
+                if (dim.line && dim.line.parent) {
+                    dim.line.parent.remove(dim.line);
+                    dim.line.geometry.dispose();
+                    dim.line.material.dispose();
+                }
+                if (dim.text && dim.text.parent) {
+                    dim.text.parent.remove(dim.text);
+                    dim.text.material.map.dispose();
+                    dim.text.material.dispose();
+                }
+                if (dim.point && dim.point.parent) { // Remove temporary points
+                    dim.point.parent.remove(dim.point);
+                    dim.point.geometry.dispose();
+                    dim.point.material.dispose();
+                }
+            });
+            dimensionObjects = []; // Clear the array
+
+            resetSketching(); // Also resets drawing mode and temporary points
+            showNotification('All sketch items and dimensions deleted.', 'success');
+        }
+
+        // NEW: Function to delete only generated 3D parts (not uploaded models)
+        function delete3DParts() {
+            const modelsToDelete = loadedModels.filter(model => model.userData.type === 'generated');
+            
+            modelsToDelete.forEach(model => {
+                scene.remove(model);
+                // Dispose of geometry and material to free up memory
+                if (model.geometry) model.geometry.dispose();
+                if (model.material) {
+                    if (Array.isArray(model.material)) {
+                        model.material.forEach(m => m.dispose());
+                    } else {
+                        model.material.dispose();
+                    }
+                }
+            });
+
+            // Update loadedModels array to only keep 'uploaded' models
+            loadedModels = loadedModels.filter(model => model.userData.type === 'uploaded');
+
+            // If the currentModel was deleted, reset it
+            if (currentModel && currentModel.userData.type === 'generated') {
+                currentModel = loadedModels.length > 0 ? loadedModels[loadedModels.length - 1] : null;
+                updateModelInfo(currentModel);
+            }
+            
+            showNotification('All generated 3D parts deleted.', 'success');
+        }
+
+        // --- Mediapipe Hands Integration Functions ---
+
+        function initHandTracking() {
+            webcamVideoElement = document.getElementById('webcamVideo');
+
+            // 1. Initialize the Mediapipe Hands model
+            hands = new Hands({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+                }
+            });
+
+            // 2. Configure the model options
+            hands.setOptions({
+                maxNumHands: 1, // Detect up to 1 hand
+                modelComplexity: 1, // 0, 1, or 2. Higher is more accurate but slower.
+                minDetectionConfidence: 0.7, // Minimum confidence for hand detection
+                minTrackingConfidence: 0.7 // Minimum confidence for hand tracking
+            });
+
+            // 3. Set the callback function for when results are ready
+            hands.onResults(onHandsResults);
+
+            // 4. Access the webcam and start sending frames
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then((stream) => {
+                    webcamVideoElement.srcObject = stream;
+                    webcamVideoElement.addEventListener('loadeddata', () => {
+                        // Once video data is loaded, start sending frames to Mediapipe
+                        handTrackingActive = true; // Activate tracking
+                        sendVideoToHands();
+                        showNotification('Webcam access granted. Hand tracking initialized!', 'success');
+                    });
+                })
+                .catch((err) => {
+                    console.error("Error accessing webcam:", err);
+                    showNotification('Failed to access webcam for hand tracking. Ensure HTTPS and camera permissions.', 'warning');
+                });
+        }
+
+        // Function to continuously send video frames to Mediapipe
+        async function sendVideoToHands() {
+            if (!handTrackingActive) return; // Stop if tracking is deactivated
+
+            // The 'hands' object expects an HTMLVideoElement or similar
+            await hands.send({ image: webcamVideoElement });
+
+            // Request the next frame to continue processing
+            requestAnimationFrame(sendVideoToHands);
+        }
+
+        // Callback function when Mediapipe Hands provides results
+        function onHandsResults(results) {
+            if (!handTrackingActive || !currentModel) return; // Only process if active and model exists
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const handLandmarks = results.multiHandLandmarks[0]; // Get the first detected hand
+
+                // Landmark definitions: https://google.github.io/mediapipe/solutions/hands.html#hand-landmark-model
+                const indexFingerTip = handLandmarks[8]; // Index finger tip
+                const thumbTip = handLandmarks[4];       // Thumb tip
+
+                // Map normalized (0-1) screen coordinates to Three.js scene coordinates
+                // These values are highly dependent on your scene's scale and desired interaction range.
+                // You will likely need to adjust the multipliers (e.g., 10, 5) and offsets.
+                const mappedX = (indexFingerTip.x - 0.5) * 10; // Center 0.5, scale to -5 to 5
+                const mappedY = -(indexFingerTip.y - 0.5) * 10; // Y is inverted in screen coords, scale to -5 to 5
+                const mappedZ = (indexFingerTip.z) * 5; // Z is depth, smaller values are closer
+
+                currentModel.position.set(mappedX, mappedY, mappedZ);
+
+                // Simple Pinch Gesture for Scaling
+                // Calculate Euclidean distance between thumb tip and index finger tip
+                const pinchDistance = Math.sqrt(
+                    Math.pow(thumbTip.x - indexFingerTip.x, 2) +
+                    Math.pow(thumbTip.y - indexFingerTip.y, 2) +
+                    Math.pow(thumbTip.z - indexFingerTip.z, 2)
+                );
+
+                const minPinchDistance = 0.05; // Threshold for a "closed" pinch
+                const maxPinchDistance = 0.2;  // Threshold for an "open" hand
+
+                // Map pinch distance to scale (e.g., 0.5 to 2.0)
+                let scaleFactor = 1.0;
+                if (pinchDistance < maxPinchDistance) {
+                    // Linear interpolation: when pinchDistance is min, scale is max; when max, scale is min
+                    scaleFactor = 0.5 + (1 - (pinchDistance - minPinchDistance) / (maxPinchDistance - minPinchDistance)) * 1.5;
+                    scaleFactor = Math.max(0.1, Math.min(2.0, scaleFactor)); // Clamp between 0.1 and 2.0
+                }
+                currentModel.scale.setScalar(scaleFactor);
+
+            } else {
+                // No hand detected, or hand tracking is off.
+                // You might want to reset model position or stop movement here.
+                // For now, it just stays in its last position.
+            }
+        }
+
+        // Function to activate/deactivate hand tracking
+        function toggleHandTracking() {
+            handTrackingActive = !handTrackingActive;
+            if (handTrackingActive) {
+                showNotification('Hand tracking activated. Move your hand in front of the camera!', 'info');
+                sendVideoToHands(); // Restart sending frames if it was stopped
+            } else {
+                showNotification('Hand tracking deactivated.', 'info');
+            }
+        }
+
+        // --- End Mediapipe Hands Integration Functions ---
+
+        // Handle window resize
+        function handleResize() {
+            const canvas = document.getElementById('threeCanvas');
+            camera.aspect = canvas.clientWidth / canvas.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        }
+
+        // Initialize everything when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initThreeJS();
+            initFileUpload();
+            updateComponentOptions();
+            
+            // Set up resize handler
+            window.addEventListener('resize', handleResize);
+            
+            showNotification('🔬 Destructive Testing Platform Loaded Successfully!', 'success');
+            
+            // Create a sample cube to start with
+            setTimeout(() => {
+                // Use default values from input fields for initial cube
+                createCustomShape('cube'); 
+                showNotification('Sample cube created. Upload your own 3D models or run tests!', 'info');
+            }, 1000);
+        });
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            switch(event.key) {
+                case 'r':
+                case 'R':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        resetCamera();
+                    }
+                    break;
+                case 'c':
+                case 'C':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        clearAllModels();
+                    }
+                    break;
+                case '1':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        createCustomShape('cube');
+                    }
+                    break;
+                case '2':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        createCustomShape('cylinder');
+                    }
+                    break;
+                case '3':
+                    if (event.ctrlKey) {
+                        event.preventDefault();
+                        createCustomShape('sphere');
+                    }
+                    break;
+            }
+        });
+
+        // Function to send AI prompt
+                // Updated sendAIPrompt to call backend proxy
+        async function sendAIPrompt() {
+            const apiKey = document.getElementById('aiApiKey').value.trim();
+            const prompt = document.getElementById('aiPrompt').value.trim();
+            const aiResponseDiv = document.getElementById('aiResponse');
+            const aiResponseContentDiv = document.getElementById('aiResponseContent');
+
+            if (!apiKey) {
+                showNotification('Please enter your AI API Key.', 'warning');
+                return;
+            }
+
+            if (!prompt) {
+                showNotification('Please enter a prompt for the AI model.', 'warning');
+                return;
+            }
+
+            aiResponseDiv.style.display = 'block';
+            aiResponseContentDiv.innerHTML = '<div class="loading-spinner"></div><p style="text-align: center; margin-top: 10px;">Sending prompt to AI...</p>';
+            showNotification('Sending prompt to AI model...', 'info');
+
+            try {
+                // Call your backend proxy endpoint
+                const response = await fetch('/api/ai-prompt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-KEY': apiKey // Pass API key in header to backend
+                    },
+                    body: JSON.stringify({ prompt })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Error: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+                }
+
+                const data = await response.json();
+                // Assuming backend returns { text: "AI response text" }
+                aiResponseContentDiv.textContent = data.text || 'No response text received.';
+                showNotification('AI response received!', 'success');
+
+            } catch (error) {
+                console.error('Error sending prompt to AI:', error);
+                aiResponseContentDiv.textContent = `Error: ${error.message}`;
+                showNotification('Failed to get AI response.', 'warning');
+            }
+        }
+
+        // Expose sendAIPrompt globally
+        window.sendAIPrompt = sendAIPrompt;
+
+        // ... (Rest of your existing JS code) ...
+
+        // Export functions to global scope for onclick handlers
+        window.createCustomShape = createCustomShape; // Renamed from createBasicShape
+        window.resetCamera = resetCamera;
+        window.clearAllModels = clearAllModels;
+        window.removeFile = removeFile;
+        window.updateComponentOptions = updateComponentOptions;
+        window.selectComponent = selectComponent;
+        window.updateParameter = updateParameter;
+        window.switchTab = switchTab;
+        window.loadMaterialPreset = loadMaterialPreset;
+        window.updateMaterialDisplay = updateMaterialDisplay;
+        window.startTest = startTest;
+        window.generateFinalReport = generateFinalReport; // Expose for button click
+        window.selectSketchPlane = selectSketchPlane; // Expose for button click
+        window.changeModelColor = changeModelColor; // Expose for button click
+        window.resetModelColor = resetModelColor; // Expose for button click
+        window.selectDrawingTool = selectDrawingTool;
+        window.start2DSketch = start2DSketch;
+        window.extrudeBoss = extrudeBoss;
+        window.extrudeCut = extrudeCut;
+        window.applyFillet = applyFillet;
+        window.applyMirror = applyMirror;
+        window.enterARMode = enterARMode;
+        window.enterVRMode = enterVRMode;
+        window.activate3DAnnotationTool = activate3DAnnotationTool;
+        window.printFinalReport = printFinalReport;
+        window.copyFinalReport = copyFinalReport;
+        window.selectSymmetryAxis = selectSymmetryAxis;
+        window.startVirtualTest = startVirtualTest;
+        window.togglePlanes = togglePlanes;
+        window.deleteSketchItems = deleteSketchItems; // EXPOSE NEW FUNCTION
+        window.delete3DParts = delete3DParts; // EXPOSE NEW FUNCTION
+    </script>
+</body>
+</html>
